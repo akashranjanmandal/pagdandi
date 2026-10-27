@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagdandi friend SOS</title>
+<style>{{CSS}}</style>
+</head>
+<body>
+{{SPRITE}}
+{{BAR}}
+<div class="layout">
+<div class="phone" id="phone" aria-label="Friend SOS screen"></div>
+<aside class="side">
+  <div class="grp"><h2>State</h2><div class="ctl" id="c-state"></div></div>
+  <div class="grp"><h2>Reality</h2><div class="ctl" id="c-real"></div></div>
+  <div class="grp"><h2>What the phone does now</h2>
+    <div class="vbox" id="hlog">haptic: <b>none</b></div>
+    <div class="vbox" id="vlog">voice: <b>none</b></div></div>
+  <div class="grp"><h2>Try</h2><ul class="notes" style="width:auto">
+    <li>"Guide me there" also acknowledges: the repeating SOS buzz stops and the group is told you are going.</li>
+    <li>Switch Signal off to see why Call 112 is disabled.</li>
+    <li>Open Rahul's emergency card.</li></ul></div>
+  <div class="grp"><h2>Notes</h2><p class="label">Reasons, states, copy, haptics: <b>friend-sos.md</b>.</p></div>
+</aside>
+</div>
+<script>{{BASE_JS}}</script>
+<script>
+(function(){
+'use strict';
+const {$,$$,T,ic,tag,hap,say,mkCtl}=P;
+let st='sos', signal=false, card=false, ang=25;
+const V={
+ sos:{tag:'fsos',big:['Rahul sent SOS','राहुल ने SOS भेजा'],sub:['4 min ago · last known position','4 मिनट पहले · आखिरी ज्ञात स्थिति'],
+      hap:['SOS ... --- ... repeating until you acknowledge',[100,80,100,80,100,200,300,100,300,100,300,200,100,80,100,80,100]],
+      voice:['Warning. Rahul sent an S.O.S. He is 340 metres away, uphill.','सावधान। राहुल ने SOS भेजा है। वे 340 मीटर दूर, ऊपर की ओर हैं।']},
+ lost:{tag:'flost',big:['Rahul out of range','राहुल सीमा से बाहर'],sub:['seen 3 min ago · last known position','3 मिनट पहले देखा · आखिरी ज्ञात स्थिति'],
+      hap:['2 long (friend lost)',[400,200,400]],
+      voice:['Rahul is out of range. He was last seen 340 metres behind, downhill.','राहुल सीमा से बाहर हैं। आखिरी बार वे 340 मीटर पीछे, नीचे की ओर दिखे थे।']}
+};
+function render(){
+  const ph=$('#phone');
+  const v=V[st==='guide'?'sos':st]; const isSos=(st!=='lost');
+  const gs=isSos?'fsos':'flost';
+  const tg=isSos?'fsos':'flost';
+  const dist=st==='lost'?'340':'340';
+  let h=`<div class="zone-glance" data-s="${gs}"><div class="hud-top" style="margin-bottom:0"><span class="caption">GPS ±6 m</span>${tag(tg)}<span class="caption" style="display:flex;gap:4px;align-items:center">${ic('bat')} 71%</span></div></div>`;
+  if(st==='guide'){
+    h+=`<div class="scroll"><div class="big"><div class="display" style="font-size:40px">${T('Going to Rahul','राहुल के पास जा रहे हैं')}</div><div class="sub">${T('Your group knows you are going','आपके समूह को पता है कि आप जा रहे हैं')}</div></div>`;
+  } else {
+    h+=`<div class="scroll"><div class="big"><div class="display">${T(v.big[0],v.big[1])}</div><div class="sub">${T(v.sub[0],v.sub[1])}</div></div>`;
+  }
+  h+=`<div class="big-row" style="margin:6px 0 10px">${P.dialHTML(tg,{big:true,ang:ang})}<div><div class="num" style="font-size:44px;line-height:1">${dist}<small style="font-size:18px;color:var(--text2)"> ${T('m','मी.')}</small></div><div class="label" style="margin-top:6px">${T('to last known position','आखिरी ज्ञात स्थिति तक')}<br>${T('±8 m · uphill','±8 मी. · ऊपर की ओर')}</div></div></div></div>`;
+  h+=`<div class="zone-thumb">`;
+  if(st!=='guide') h+=`<button class="btn" id="card">${ic('card')} ${T('Rahul’s emergency card','राहुल का इमरजेंसी कार्ड')}</button>
+    <button class="btn primary" id="guide">${ic('arrow')}${T('Guide me there','मुझे वहाँ ले चलें')}</button>`;
+  else h+=`<a class="btn" href="active-trek.html" style="text-decoration:none">${ic('back')} ${T('Back to trek map','ट्रैक नक्शे पर वापस')}</a>`;
+  const call=signal?`<button class="btn" id="call" style="flex:1">${ic('call')} <span>${T('Call 112','112 पर कॉल')}</span></button>`
+    :`<button class="btn dis" id="call" style="flex:1" aria-disabled="true">${ic('call')} <span>${T('Call 112','112 पर कॉल')}<small>${T('No signal yet','अभी सिग्नल नहीं')}</small></span></button>`;
+  const pttBtn=`<button class="ptt" id="ptt" data-s="idle" aria-label="Hold to talk"><span class="in">${ic('mic','','width:28px;height:28px')}<span>${T('Hold to talk','बोलने के लिए दबाए रखें')}</span></span></button>`;
+  h+=`<div style="display:flex;gap:12px;align-items:flex-end;${document.body.classList.contains('left')?'flex-direction:row-reverse':''}"><div style="flex:1;display:flex;flex-direction:column;gap:8px;justify-content:flex-end">${call}<div class="caption" id="callwhy" style="min-height:32px">${signal?'':T('Needs any mobile signal. Enables the moment one appears.','किसी भी सिग्नल की ज़रूरत है। सिग्नल मिलते ही चालू हो जाएगा।')}</div></div>${pttBtn}</div></div>`;
+  if(card) h+=`<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Rahul emergency card"><h3>${T('Rahul’s emergency card','राहुल का इमरजेंसी कार्ड')}</h3>
+    <div class="kv"><span>${T('Blood group','रक्त समूह')}</span><span>B+</span></div>
+    <div class="kv"><span>${T('Allergies','एलर्जी')}</span><span>${T('Penicillin','पेनिसिलिन')}</span></div>
+    <div class="kv"><span>${T('Medicines','दवाइयाँ')}</span><span>${T('None','कोई नहीं')}</span></div>
+    <div class="kv"><span>${T('Contact','संपर्क')}</span><span>Meera · +91 98xxx xx210</span></div>
+    <button class="btn" id="cardx">${T('Close','बंद करें')}</button></div>`;
+  ph.innerHTML=h; wire(); P.apply();
+}
+function wire(){
+  const g=$('#guide'); if(g&&st!=='guide')P.press(g,()=>{ st='guide'; render(); hap('SOS buzz stops · 1 short · group told you are going',30); $('#vlog').innerHTML='voice: <b>none</b>'; mark() });
+  const c=$('#card'); if(c)P.press(c,()=>{card=true;render()});
+  const cx=$('#cardx'); if(cx)P.press(cx,()=>{card=false;render()});
+  const call=$('#call'); if(call)P.press(call,()=>{ hap(signal?'tap tick · opens dialler with 112':'1 short · button explains why it is disabled',10) });
+  const p=$('#ptt'); if(p){ p.addEventListener('pointerdown',e=>{p.classList.add('down');p.dataset.s='talking';p.innerHTML=`<span class="in"><span class="wave live"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>${T('Talking','बोल रहे हैं')}</span></span>`;hap('tap tick 10 ms · roger beep (start)',10);p.setPointerCapture(e.pointerId)});
+    ['pointerup','pointercancel'].forEach(ev=>p.addEventListener(ev,()=>{ if(p.dataset.s==='talking'){ p.classList.remove('down'); p.dataset.s='idle'; p.innerHTML=`<span class="in">${ic('mic','','width:28px;height:28px')}<span>${T('Hold to talk','बोलने के लिए दबाए रखें')}</span></span>`; hap('roger beep (end) · 1 short',30) } })) }
+}
+function mark(){ $$('#c-state button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===st)) }
+mkCtl($('#c-state'),[['sos','Rahul sent SOS'],['lost','Rahul out of range'],['guide','After "Guide me there"']],s=>{ st=s; card=false; render(); const v=V[s==='guide'?'sos':s];
+  if(s!=='guide'){ hap(v.hap[0],v.hap[1]); say(v.voice[0],v.voice[1]) } else { hap('SOS buzz stopped (acknowledged)'); $('#vlog').innerHTML='voice: <b>none</b>' } },true);
+mkCtl($('#c-real'),[['_s','Signal: toggle']],()=>{ signal=!signal; render() });
+P.listeners.push(render);
+render(); hap(V.sos.hap[0],V.sos.hap[1]); say(V.sos.voice[0],V.sos.voice[1]);
+})();
+</script>
+</body>
+</html>

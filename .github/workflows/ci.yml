@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Analyze, test, coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install melos
+        run: dart pub global activate melos
+      - name: Resolve workspace
+        run: flutter pub get
+      - name: Format check
+        run: dart format --output=none --set-exit-if-changed packages app tool test
+      - name: Analyze (zero warnings, infos fail too)
+        run: melos run analyze
+      - name: Dart package tests
+        run: melos run test:dart
+      - name: Flutter tests (widget, tokens, contrast, goldens)
+        run: melos run test:flutter
+      - name: Tooling tests
+        run: dart test test
+      - name: Coverage gates (core and engines >= 90% lines, engine_safety 100% branches)
+        run: dart run tool/check_coverage.dart
+
+  android:
+    name: Kotlin tests and debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Kotlin unit tests (JUnit + Robolectric)
+        working-directory: app/android
+        run: ./gradlew :native_bridge:testDebugUnitTest
+      - name: Build debug APK
+        working-directory: app
+        run: flutter build apk --debug

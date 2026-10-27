@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagdandi active trek</title>
+<style>
+/* ===== Tokens (docs/design/tokens.md) ===== */
+:root{
+  --bg:#000; --surface:#0E1114; --raised:#171B1F;
+  --hair:#262C32; --contour:#1A2026;
+  --text:#ECEFF1; --text2:#8A949E; --text3:#6E7A85;
+  --signal:#FF6B1A; --nav:#5CC8E0; --ok:#4CD18A; --warn:#FFB020; --sos:#FF3B30;
+  --tint-nav:#0B1A1F; --tint-warn:#1F1608; --tint-signal:#1F0F05; --tint-sos:#1F0706;
+  --line:1px;            /* hairline */
+  --k:1;                 /* glove: target scale */
+  --sp:1;                /* glove: spacing scale */
+  --fast:120ms; --base:220ms; --slow:320ms;
+  --ease-out:cubic-bezier(.2,.9,.25,1);   /* stiff spring, no overshoot */
+  --ease-in:cubic-bezier(.5,0,.8,.4);
+  --f-text:'Barlow','Roboto','Segoe UI',system-ui,sans-serif;
+  --f-cond:'Barlow Condensed','Roboto Condensed','Arial Narrow',sans-serif;
+  --f-hi:'Noto Sans Devanagari','Nirmala UI','Mangal',sans-serif;
+}
+body.sun{
+  --text:#FFFFFF; --text2:#D0D6DB; --text3:#D0D6DB;
+  --line:2px; --contour:#3A444C; --hair:#4A545D;
+  --tint-nav:#000; --tint-warn:#000; --tint-signal:#000; --tint-sos:#000;
+}
+body.glove{ --k:1.25; --sp:1.15; }
+body.hi{ --f-text:var(--f-hi),'Barlow',sans-serif; --f-cond:var(--f-hi),'Barlow Condensed',sans-serif; }
+body.hi .display,body.hi .hero{line-height:1.2}
+body.reduce *{ animation:none !important; transition:opacity var(--base) linear !important; }
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#000}
+body{background:var(--bg);color:var(--text);font:400 16px/1.35 var(--f-text);
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;padding-bottom:80px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ===== Sheet chrome (not part of the app) ===== */
+.bar{position:sticky;top:0;z-index:20;background:#000;border-bottom:1px solid var(--hair);
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 18px}
+.bar h1{font:500 16px var(--f-text);margin-right:auto}
+.tg{border:1px solid var(--hair);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text2)}
+.tg[aria-pressed=true]{border-color:var(--signal);color:var(--text)}
+main{max-width:1180px;margin:0 auto;padding:0 18px}
+.sec{padding:32px 0 8px;border-bottom:1px solid var(--hair)}
+.sec>h2{font:500 20px var(--f-text)}
+.sec>.why{font-size:13px;color:var(--text2);max-width:640px;margin:4px 0 16px}
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;margin-bottom:24px}
+.stage{width:360px;background:var(--bg);border:1px solid var(--hair);border-radius:12px;overflow:hidden;position:relative}
+.stage.pad{padding:18px}
+.ctl{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;max-width:360px}
+.ctl button{border:1px solid var(--hair);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--text2)}
+.ctl button[aria-pressed=true]{border-color:var(--text);color:var(--text)}
+.notes{width:360px;font-size:13px;color:var(--text2)}
+.notes b{color:var(--text);font-weight:500}
+.notes li{margin-left:16px;margin-bottom:4px}
+.hlog{font:12px/1.2 ui-monospace,Menlo,monospace;color:var(--text2);margin-top:8px;min-height:16px}
+.hlog b{color:var(--signal);font-weight:500}
+
+/* ===== App typography ===== */
+.display{font:500 44px/1 var(--f-cond)}
+.hero{font:500 30px/1.05 var(--f-cond)}
+.title{font:500 20px/1.2 var(--f-text)}
+.body{font:400 16px/1.35 var(--f-text)}
+.label{font:400 13px/1.3 var(--f-text);color:var(--text2)}
+.caption{font:400 12px/1.3 var(--f-text);color:var(--text2)}
+.num{font-family:var(--f-cond);font-weight:500}
+.dim{color:var(--text2)}
+
+/* ===== StatusTag ===== */
+.tag{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px 0 8px;border-radius:8px;
+  border:var(--line) solid currentColor;font:500 13px var(--f-text)}
+.tag[data-s=ok]{color:var(--ok)} .tag[data-s=junction]{color:var(--nav)}
+.tag[data-s=off],.tag[data-s=wrong],.tag[data-s=gps]{color:var(--warn)}
+.tag[data-s=regroup]{color:var(--signal)} .tag[data-s=sos]{color:var(--sos)}
+
+/* ===== HUD (glance zone) ===== */
+.hud{background:var(--surface);border-bottom:var(--line) solid var(--hair);padding:12px 18px 14px;
+  transition:background var(--base) var(--ease-out)}
+.hud[data-s=junction]{background:var(--tint-nav)} .hud[data-s=off],.hud[data-s=wrong],.hud[data-s=gps]{background:var(--tint-warn)}
+.hud[data-s=regroup]{background:var(--tint-signal)} .hud[data-s=sos]{background:var(--tint-sos)}
+.hud-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.hud-main{display:flex;gap:14px;align-items:center}
+.hero-wrap{min-width:0;flex:1}
+.hero-wrap .sub{font:400 16px/1.3 var(--f-text);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.hero-wrap .hero{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color var(--base)}
+
+/* ===== DirectionDial ===== */
+.dial{width:58px;height:58px;border-radius:50%;border:calc(var(--line)*2) solid var(--nav);display:grid;place-items:center;
+  flex:none;position:relative;color:var(--nav);transition:color var(--base),border-color var(--base)}
+.dial.big{width:112px;height:112px}
+.dial[data-s=ok]{color:var(--ok);border-color:var(--ok)} .dial[data-s=off],.dial[data-s=wrong],.dial[data-s=gps]{color:var(--warn);border-color:var(--warn)}
+.dial[data-s=regroup]{color:var(--signal);border-color:var(--signal)} .dial[data-s=sos]{color:var(--sos);border-color:var(--sos)}
+.dial svg.arrow{width:62%;height:62%;transition:transform var(--slow) var(--ease-out)}
+.dial .ticks{position:absolute;inset:-1px}
+
+/* ===== StatTriplet ===== */
+.tripwrap{margin-top:14px;border-top:var(--line) solid var(--hair);padding-top:8px}
+.tripwrap>.caption{margin-bottom:6px}
+.trip{display:grid;grid-template-columns:repeat(3,1fr)}
+.trip>div+div{border-left:var(--line) solid var(--hair);padding-left:12px}
+.trip .num{font-size:26px;line-height:1}
+.trip .num small{font-size:13px;color:var(--text2);margin-left:2px}
+.trip .caption{margin-top:2px}
+.trip.paused .num,.trip.paused .caption{color:var(--text2)}
+.pausedline{margin-top:8px;font-size:16px;color:var(--text)}
+
+/* ===== GroupBar / LinkStrength ===== */
+.gbar{display:flex;align-items:center;gap:10px;min-height:calc(48px*var(--k));padding:0 18px;border-top:var(--line) solid var(--hair);background:var(--surface)}
+.gbar .main{font:500 16px var(--f-text)} .gbar .fact{margin-left:auto;font-size:13px;color:var(--text2);text-align:right}
+.gbar[data-s=warn]{color:var(--warn)} .gbar[data-s=warn] .fact{color:var(--warn)}
+.gbar[data-s=regroup]{background:var(--tint-signal);color:var(--signal)} .gbar[data-s=regroup] .fact{color:var(--signal)}
+.gbar[data-s=ok] .i{color:var(--ok)}
+.link{display:inline-flex;align-items:flex-end;gap:2px;height:16px}
+.link i{display:block;width:4px;background:var(--text3);border-radius:1px}
+.link i:nth-child(1){height:6px}.link i:nth-child(2){height:11px}.link i:nth-child(3){height:16px}
+.link[data-n="3"] i{background:var(--ok)} .link[data-n="2"] i:nth-child(-n+2){background:var(--warn)} .link[data-n="1"] i:nth-child(1){background:var(--warn)}
+.lrow{display:flex;align-items:center;gap:12px;min-height:calc(56px*var(--k));padding:0 18px;border-bottom:var(--line) solid var(--hair)}
+.lrow .nm{font-weight:500;min-width:62px}
+.lrow .w{font-size:13px;min-width:92px}
+.lrow .seen{margin-left:auto;font-size:13px;color:var(--text2)}
+.av{width:36px;height:36px;border-radius:50%;border:calc(var(--line)*2) solid var(--ok);display:grid;place-items:center;font:500 13px var(--f-text);flex:none}
+.av.out{border-color:var(--text3);border-style:dashed;color:var(--text2)}
+
+/* ===== Buttons: PTT, Hold, Dock ===== */
+.dock{position:relative;height:calc(150px*var(--k));background:var(--bg);border-top:var(--line) solid var(--hair);padding:0 18px}
+.dock.left .ptt-w{left:18px;right:auto} .dock.left .sos-w{right:18px;left:auto}
+.dock .ptt-w{position:absolute;right:18px;bottom:18px;text-align:center}
+.dock .sos-w{position:absolute;left:18px;bottom:22px;text-align:center}
+.dock .pin-w{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);text-align:center}
+.ptt{width:calc(104px*var(--k));height:calc(104px*var(--k));border-radius:28px;background:var(--signal);color:#000;
+  display:grid;place-items:center;font:500 16px/1.1 var(--f-text);text-align:center;transition:background var(--fast),transform var(--fast) var(--ease-out);
+  position:relative;user-select:none;-webkit-user-select:none;touch-action:none}
+.ptt:active,.ptt.down{transform:scale(.96)}
+.ptt[data-s=talking]{background:var(--signal)}
+.ptt[data-s=receiving]{background:var(--raised);color:var(--text);border:calc(var(--line)*2) solid var(--nav)}
+.ptt[data-s=busy]{background:var(--raised);color:var(--text2);border:calc(var(--line)*2) dashed var(--text3)}
+.ptt .in{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 8px}
+.wave{display:flex;align-items:center;gap:3px;height:28px}
+.wave i{display:block;width:4px;border-radius:2px;background:currentColor;height:6px}
+.wave.live i{animation:wv 700ms ease-in-out infinite alternate}
+@keyframes wv{from{height:5px}to{height:26px}}
+.wave i:nth-child(2n){animation-delay:-.2s}.wave i:nth-child(3n){animation-delay:-.45s}.wave i:nth-child(5n){animation-delay:-.1s}
+.cap-q{display:flex;align-items:center;justify-content:center;gap:2px;font-size:12px;color:var(--text2);margin-bottom:6px;min-height:calc(24px*var(--k))}
+.pinb{width:calc(56px*var(--k));height:calc(56px*var(--k));border-radius:16px;border:calc(var(--line)*2) solid var(--text2);display:grid;place-items:center}
+.pinb:active{background:var(--raised)}
+.under{font-size:12px;color:var(--text2);margin-top:6px}
+
+.hold{position:relative;display:inline-grid;place-items:center;border-radius:20px;user-select:none;-webkit-user-select:none;touch-action:none;
+  width:calc(var(--d,66px)*var(--k));height:calc(var(--d,66px)*var(--k))}
+.hold svg.ring{position:absolute;inset:0;width:100%;height:100%}
+.hold .track{fill:none;stroke:var(--c,var(--text));stroke-opacity:.35;stroke-width:calc(3px + var(--line))}
+.hold .prog{fill:none;stroke:var(--c,var(--text));stroke-width:calc(4px + var(--line));stroke-linecap:round}
+.hold .face{font:500 13px/1.1 var(--f-text);color:var(--c,var(--text));text-align:center;position:relative}
+.hold.release .prog{transition:stroke-dashoffset 260ms var(--ease-out)}
+.hold.done .face{color:#000}
+.hold.done{background:var(--c,var(--text))}
+.hold.wide{border-radius:16px;width:100%;height:calc(72px*var(--k));display:flex;justify-content:center;align-items:center;border:calc(var(--line)*2) solid var(--c);overflow:hidden}
+.hold.wide .fill{position:absolute;inset:0;background:var(--c);opacity:.28;transform-origin:left;transform:scaleX(0)}
+.hold.wide.release .fill{transition:transform 260ms var(--ease-out)}
+.hold.wide .face{font:500 16px var(--f-text);color:var(--text)}
+.hold.wide.done .face{color:#000}
+
+/* ===== Quick message arc ===== */
+.qm{position:relative;height:calc(270px*var(--k))}
+.qm .tgt{position:absolute;width:calc(72px*var(--k));height:calc(72px*var(--k));border-radius:20px;background:var(--raised);
+  border:calc(var(--line)*2) solid var(--hair);display:grid;place-items:center;text-align:center;font:500 13px/1.15 var(--f-text);padding:4px;
+  opacity:0;transform:translate(0,40px) scale(.8);transition:opacity var(--base),transform var(--base) var(--ease-out)}
+.qm.open .tgt{opacity:1;transform:none}
+.qm .tgt.pick{background:var(--signal);color:#000;border-color:var(--signal)}
+.qm .ptt-w{position:absolute;right:18px;bottom:18px;text-align:center}
+
+/* ===== Countdown ===== */
+.cd{position:relative;width:200px;height:200px;margin:0 auto}
+.cd svg{width:100%;height:100%;transform:rotate(-90deg)}
+.cd .t{fill:none;stroke:var(--hair);stroke-width:8}
+.cd .p{fill:none;stroke:var(--sos);stroke-width:8;stroke-linecap:butt}
+.cd .n{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.cd .n .display{font-size:72px}
+
+/* ===== BigInstruction / StatusChecklist ===== */
+.big{padding:24px 18px 16px}
+.big .display{letter-spacing:-.01em}
+.big .sub{margin-top:8px;color:var(--text);font-size:16px}
+.chk{list-style:none}
+.chk li{display:flex;align-items:center;gap:12px;min-height:calc(52px*var(--k));padding:0 18px;border-bottom:var(--line) solid var(--hair)}
+.chk .st{margin-left:auto;font-size:13px;text-align:right}
+.chk .st[data-s=done]{color:var(--ok)} .chk .st[data-s=live]{color:var(--signal)} .chk .st[data-s=wait]{color:var(--warn)} .chk .st[data-s=off]{color:var(--text2)}
+.pulse{width:10px;height:10px;border-radius:50%;background:var(--signal);position:relative;flex:none}
+.pulse.live::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--signal);animation:pl 1.6s ease-out infinite}
+@keyframes pl{from{transform:scale(1);opacity:.9}to{transform:scale(3);opacity:0}}
+
+/* ===== PinTypeGrid ===== */
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:calc(10px*var(--sp));padding:18px}
+.pgrid button{height:calc(88px*var(--k));border:var(--line) solid var(--hair);border-radius:12px;background:var(--surface);
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:12px;text-align:left;font:500 16px var(--f-text)}
+.pgrid button .i{width:24px;height:24px}
+.pgrid button[data-t=danger] .i{color:var(--warn)} .pgrid button.sel{border-color:var(--signal);background:var(--tint-signal)}
+.pgrid button:active{background:var(--raised)}
+
+/* ===== ReadinessRow ===== */
+.rrow{display:flex;align-items:center;gap:12px;min-height:calc(60px*var(--k));padding:0 18px;border-bottom:var(--line) solid var(--hair)}
+.rrow .m{flex:1;min-width:0}
+.rrow .m .a{font-weight:500} .rrow .m .b{font-size:13px;color:var(--text2)}
+.rrow[data-s=ok] .i.s{color:var(--ok)} .rrow[data-s=warn] .i.s{color:var(--warn)} .rrow[data-s=bad] .i.s{color:var(--warn)}
+.fix{height:calc(40px*var(--k));min-width:calc(56px*var(--k));padding:0 14px;border:calc(var(--line)*2) solid var(--signal);border-radius:8px;color:var(--signal);font-weight:500;font-size:13px}
+
+/* ===== HealthBanner ===== */
+.hb{display:flex;align-items:center;gap:12px;min-height:calc(56px*var(--k));padding:0 8px 0 18px;background:var(--tint-warn);
+  border-top:calc(var(--line)*2) solid var(--warn);border-bottom:var(--line) solid var(--hair);color:var(--text)}
+.hb .i.l{color:var(--warn)}
+.hb .tx{flex:1;font-weight:500}.hb .tx small{display:block;font-weight:400;color:var(--text2);font-size:13px}
+.hb .x{width:calc(56px*var(--k));height:calc(56px*var(--k));display:grid;place-items:center;color:var(--text2)}
+body.sun .hb{background:#000}
+
+/* ===== Map / elevation profile ===== */
+.mapbox{height:210px;background:var(--bg);position:relative}
+.mapbox svg{width:100%;height:100%;display:block}
+.ep{padding:12px 18px 14px}
+.ep svg{width:100%;height:112px;display:block;overflow:visible}
+.ep .ax{font-size:11px;fill:var(--text2)}
+.ep-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.ep-top .num{font-size:22px}
+
+
+/* ===== LargeToggle / Snooze / ThumbBack / Toast ===== */
+.ltrow{display:flex;gap:calc(10px*var(--sp))}
+.ltog{flex:1;min-height:calc(88px*var(--k));border-radius:16px;border:calc(var(--line)*2) solid var(--hair);background:var(--surface);padding:12px;
+  display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;
+  transition:background var(--fast),border-color var(--fast)}
+.ltog .i{width:26px;height:26px}
+.ltog .lt-n{font:500 16px var(--f-text)} .ltog .lt-s{font:500 13px var(--f-text);color:var(--text2)}
+.ltog[aria-pressed=true]{background:var(--signal);border-color:var(--signal);color:#000}
+.ltog[aria-pressed=true] .lt-s{color:#000}
+.snooze{width:100%;min-height:calc(72px*var(--k));border-radius:16px;border:calc(var(--line)*2) solid var(--warn);color:var(--text);
+  display:flex;align-items:center;justify-content:center;gap:12px;font:500 16px/1.25 var(--f-text);cursor:pointer;text-align:left;padding:8px 14px}
+.snooze small{color:var(--text2);font:400 13px var(--f-text)}
+.snooze[data-s=on]{border-color:var(--text2);background:var(--raised)}
+.tbbar{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:center;min-height:calc(88px*var(--k));padding:0 18px;border-top:var(--line) solid var(--hair)}
+body.left .tbbar{flex-direction:row}
+.tb{min-width:calc(112px*var(--k));height:calc(56px*var(--k));border-radius:16px;border:calc(var(--line)*2) solid var(--text2);display:flex;gap:6px;align-items:center;justify-content:center;font:500 16px var(--f-text);cursor:pointer}
+.tb:active{background:var(--raised)}
+.toast{display:flex;align-items:center;gap:10px;min-height:calc(40px*var(--k));margin:12px -18px -14px;padding:8px 18px;background:var(--raised);
+  border-top:var(--line) solid var(--hair);font:500 16px var(--f-text);color:var(--text);transition:opacity var(--base) var(--ease-in)}
+.toast b{font-weight:500;color:var(--nav)} .toast.out{opacity:0}
+.toast span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hold:focus-visible,.ltog:focus-visible,.snooze:focus-visible,.tb:focus-visible{outline:2px solid var(--nav);outline-offset:3px}
+
+.swatch{display:flex;gap:8px;flex-wrap:wrap;max-width:720px}
+.sw{width:112px;border:1px solid var(--hair);border-radius:12px;overflow:hidden;font-size:12px}
+.sw i{display:block;height:48px;border-bottom:1px solid var(--hair)} .sw div{padding:6px 8px;color:var(--text2)}
+.sw b{color:var(--text);font-weight:500;display:block}
+.typ{width:100%;max-width:720px;border-collapse:collapse}
+.typ td{padding:10px 0;border-bottom:1px solid var(--hair);vertical-align:baseline}
+.typ td:first-child{width:130px;font-size:12px;color:var(--text2)}
+
+/* ===== Button system v2: physical keys =====
+   Face (raised), light top rim, thick dark lower edge that squashes on press.
+   Colour lives on the icon or the fill, never on competing outlines.
+   No shadows, no glow: the edge is a flat band. */
+:root{--key:#171B1F;--key-rim:#2E363E;--key-edge:#07090A;--key-orange-rim:#FF9A66;--key-orange-edge:#A3400A}
+body.sun{--key:#0E1114;--key-rim:#A9B2BA;--key-edge:#000}
+.btn,.ltog,.snooze,.tb,.opt,.pinb,.ptt,.hold,.ok-btn{
+  background:var(--key);border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge);
+  transition:transform var(--fast) var(--ease-out),border-bottom-width var(--fast) var(--ease-out),background var(--fast)}
+.btn:active,.ltog:active,.snooze:active,.tb:active,.opt:active,.pinb:active,.ptt:active,.hold:active,.ok-btn:active{
+  transform:translateY(3px);border-bottom-width:1px}
+.btn .i,.snooze .i,.tb .i,.opt .i{width:22px;height:22px}
+.btn.primary{background:var(--signal);border-color:var(--key-orange-rim);border-bottom-color:var(--key-orange-edge);color:#000}
+.btn.primary .i{stroke-width:2.4}
+.btn.dis{background:transparent;border:1px dashed var(--text3);border-bottom:1px dashed var(--text3);color:var(--text2)}
+.btn.dis:active{transform:none}
+/* snooze: neutral key, colour only on the icon */
+.snooze{border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge);color:var(--text)}
+.snooze .i{color:var(--warn)} .snooze[data-s=on]{background:var(--raised)}
+.snooze[data-s=on] .i{color:var(--text2)}
+/* toggles: key with a status lamp */
+.ltog{position:relative;border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge)}
+.ltog::after{content:"";position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;border:2px solid var(--text3)}
+.ltog[aria-pressed=true]{background:var(--signal);border-color:var(--key-orange-rim);border-bottom-color:var(--key-orange-edge)}
+.ltog[aria-pressed=true]::after{background:#000;border-color:#000}
+/* PTT: the big orange key with an inner bezel */
+.ptt{position:relative;background:var(--signal);color:#000;border:1px solid var(--key-orange-rim);border-bottom:6px solid var(--key-orange-edge)}
+.ptt::before{content:"";position:absolute;inset:7px;border:2px solid rgba(0,0,0,.22);border-radius:19px;pointer-events:none}
+.ptt:active,.ptt.down{transform:translateY(4px);border-bottom-width:2px}
+.ptt[data-s=receiving]{background:var(--key);color:var(--text);border:1px solid var(--nav);border-bottom:6px solid var(--key-edge)}
+.ptt[data-s=receiving]::before{border-color:var(--nav);opacity:.5}
+.ptt[data-s=busy]{background:var(--key);color:var(--text2);border:1px dashed var(--text3);border-bottom:1px dashed var(--text3)}
+.ptt[data-s=busy]::before{display:none}
+/* pin key */
+.pinb{border-radius:16px}
+/* hold buttons: key + coloured progress */
+.hold{border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge)}
+.hold .track{stroke:var(--text3);stroke-opacity:.5}
+.hold.wide{overflow:hidden;border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge);justify-content:flex-start;padding:0 18px}
+.hold.wide .fill{opacity:.4}
+.hold.wide .face{display:flex;align-items:center;gap:12px;font:500 16px var(--f-text);color:var(--text)}
+.hold.wide .face .i{color:var(--c);width:22px;height:22px}
+.hold.wide.done .face .i{color:#000}
+.hold:active{transform:none}
+.hold.wide:active,.hold:active{border-bottom-width:4px}
+/* big OK key */
+.ok-btn{background:var(--ok);border:1px solid #8BE8B8;border-bottom:8px solid #2A8A59;color:#000}
+.ok-btn:active{transform:translateY(5px);border-bottom-width:3px}
+.ok-btn .i{width:56px;height:56px;stroke-width:2.4;margin-bottom:6px}
+/* sheet options as keys */
+.opt{border-radius:16px}
+/* controls sit on a panel so keys read as raised */
+.dock,.phone .zone-thumb{background:var(--surface)}
+
+
+/* ===== D2 prototype shell ===== */
+.layout{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start;padding:24px 18px 60px}
+.phone{width:360px;height:780px;background:#000;border:1px solid var(--hair);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;position:relative;flex:none}
+.side{width:380px;max-width:100%}
+.side h2{font:500 14px var(--f-text);color:var(--text2);margin:0 0 8px;text-transform:none}
+.side .grp{margin-bottom:18px}
+.side .ctl{max-width:none}
+.vbox{border:1px solid var(--hair);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--text2);margin-bottom:8px}
+.vbox b{color:var(--text);font-weight:500}
+.navlinks{display:flex;flex-wrap:wrap;gap:6px}
+.navlinks a{color:var(--text2);font-size:13px;text-decoration:none;border:1px solid var(--hair);border-radius:8px;padding:8px 12px}
+.navlinks a[aria-current=page]{color:var(--text);border-color:var(--text)}
+.side .notes{width:auto}
+.scroll{overflow:auto;flex:1;min-height:0}
+.phone .zone-thumb{padding:12px 18px 18px;display:flex;flex-direction:column;gap:calc(12px*var(--sp));border-top:var(--line) solid var(--hair);background:var(--bg)}
+.phone .zone-glance{padding:12px 18px 14px;border-bottom:var(--line) solid var(--hair);background:var(--surface);transition:background var(--base) var(--ease-out)}
+.phone .zone-glance[data-s=sos],.phone .zone-glance[data-s=fsos]{background:var(--tint-sos)}
+.phone .zone-glance[data-s=lost],.phone .zone-glance[data-s=regroup],.phone .zone-glance[data-s=flost]{background:var(--tint-signal)}
+.phone .zone-glance[data-s=ok]{background:var(--surface)}
+body.sun .phone .zone-glance{background:#000}
+.phone .zone-glance .hud-top{margin-bottom:10px}
+.btn{min-height:calc(72px*var(--k));border-radius:16px;display:flex;align-items:center;justify-content:center;gap:10px;
+  font:500 16px/1.2 var(--f-text);color:var(--text);cursor:pointer;text-align:center;padding:8px 14px;width:100%;user-select:none;-webkit-user-select:none}
+.btn small{display:block;font:400 13px var(--f-text);opacity:.9}
+.btn:focus-visible{outline:2px solid var(--nav);outline-offset:3px}
+.mapzone{flex:1;position:relative;overflow:hidden;min-height:0;touch-action:none;background:#000;cursor:grab}
+.mapzone svg{width:100%;height:100%;display:block}
+.mapzone .alt{position:absolute;right:18px;bottom:8px;font:400 12px var(--f-text);color:var(--text2)}
+.settle{animation:settle var(--base) var(--ease-out)}
+@keyframes settle{from{transform:scale(1.14)}to{transform:scale(1)}}
+.mk-pulse{transform-box:fill-box;transform-origin:center;animation:mkp 1.6s ease-out infinite}
+@keyframes mkp{from{transform:scale(1);opacity:.9}to{transform:scale(3.2);opacity:0}}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-top:calc(var(--line)*2) solid var(--hair);border-radius:20px 20px 0 0;padding:18px;display:flex;flex-direction:column;gap:calc(12px*var(--sp));z-index:5}
+.sheet h3{font:500 20px var(--f-text)}
+.opt{min-height:calc(72px*var(--k));border-radius:16px;border:calc(var(--line)*2) solid var(--hair);background:var(--surface);display:flex;align-items:center;gap:14px;padding:0 16px;font:500 20px var(--f-text);cursor:pointer;width:100%;text-align:left}
+.opt .i{width:26px;height:26px}
+.scrim{position:absolute;inset:0;background:#000;opacity:.7;z-index:4}
+.coord{font:500 44px/1.05 var(--f-cond);letter-spacing:.01em}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:var(--line) solid var(--hair);font-size:16px}
+.kv span:first-child{color:var(--text2)}
+.tag[data-s=lost]{color:var(--signal)} .tag[data-s=flost]{color:var(--signal)} .tag[data-s=fsos]{color:var(--sos)} .tag[data-s=fall]{color:var(--warn)}
+.dial[data-s=lost],.dial[data-s=flost]{color:var(--signal);border-color:var(--signal)} .dial[data-s=fsos]{color:var(--sos);border-color:var(--sos)}
+.dial.big svg.arrow{width:56%;height:56%}
+.dial .glyph{position:absolute;inset:0;margin:auto}
+.big-row{display:flex;align-items:center;gap:18px;padding:0 18px}
+.ok-btn{flex:1;min-height:0;border-radius:24px;color:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;font:500 44px var(--f-cond);cursor:pointer;width:100%}
+body.ts15 .phone .caption,body.ts15 .phone .under{font-size:18px}
+body.ts15 .phone .label,body.ts15 .phone .tag{font-size:19px}
+body.ts15 .phone .body,body.ts15 .phone .sub,body.ts15 .phone .btn,body.ts15 .phone .kv,body.ts15 .phone .chk li{font-size:24px}
+body.ts15 .phone .btn small{font-size:19px}
+body.ts15 .phone .hero{font-size:40px}
+body.ts15 .phone .gbar .main,body.ts15 .phone .gbar .fact{font-size:19px}
+body.ts15 .phone .trip .num{font-size:34px}
+body.ts15 .phone .trip .caption{font-size:18px}
+
+.phone .zone-glance[data-s=junction]{background:var(--tint-nav)}
+.phone .zone-glance[data-s=off],.phone .zone-glance[data-s=wrong],.phone .zone-glance[data-s=gps]{background:var(--tint-warn)}
+body.sun .phone .zone-glance{background:#000}
+
+/* ===== Active Trek bottom: group row + key deck ===== */
+.gbar-row{display:flex;align-items:center;gap:12px;min-height:calc(56px*var(--k));padding:0 18px;border:0;border-top:var(--line) solid var(--hair);background:var(--surface);color:var(--text);width:100%;text-align:left;cursor:pointer}
+.gbar-row .main{font:500 16px var(--f-text)} .gbar-row .fact{margin-left:auto;font-size:13px;color:var(--text2);text-align:right}
+.gbar-row .chev{width:20px;height:20px;color:var(--text2);flex:none}
+.gbar-row[data-s=warn],.gbar-row[data-s=warn] .fact{color:var(--warn)}
+.gbar-row[data-s=regroup]{background:var(--tint-signal);color:var(--signal)} .gbar-row[data-s=regroup] .fact,.gbar-row[data-s=regroup] .chev{color:var(--signal)}
+.gbar-row[data-s=ok]>.i:first-child{color:var(--ok)}
+.deck{display:flex;gap:12px;align-items:flex-end;padding:12px 18px 18px;background:var(--surface);border-top:var(--line) solid var(--hair)}
+.deck.left{flex-direction:row-reverse}
+.deck .hold{--d:80px}
+.deck .hold .face{display:flex;flex-direction:column;align-items:center;gap:2px;font:500 16px var(--f-text)}
+.deck .hold .face small{font:400 12px var(--f-text);color:var(--text2)}
+.deck .deckkey{width:calc(80px*var(--k));height:calc(80px*var(--k));border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:500 16px var(--f-text);color:var(--text);cursor:pointer;flex:none}
+.deck .deckkey .i{width:26px;height:26px}
+.deck .ptt{flex:1;height:calc(104px*var(--k));width:auto;min-width:0;border-radius:24px}
+.deck .ptt .in{gap:2px}
+.deck .ptt .qm-hint{display:flex;align-items:center;gap:2px;font:400 12px var(--f-text);color:rgba(0,0,0,.78);margin-bottom:4px}
+.deck .ptt[data-s=receiving] .qm-hint,.deck .ptt[data-s=busy] .qm-hint{display:none}
+
+.deckkey{background:var(--key);border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge);transition:transform var(--fast) var(--ease-out),border-bottom-width var(--fast) var(--ease-out)}
+.deckkey:active{transform:translateY(3px);border-bottom-width:1px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <defs>
+  <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-fork" viewBox="0 0 24 24"><path d="M12 21v-8M12 13L6 7M12 13l6-6M6 7v3M6 7h3M18 7v3M18 7h-3"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></symbol>
+  <symbol id="i-uturn" viewBox="0 0 24 24"><path d="M8 20V9a4 4 0 018 0v3"/><path d="M13 9l3 3 3-3"/></symbol>
+  <symbol id="i-gps" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M4 4l16 16"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="10"/></symbol>
+  <symbol id="i-sos" viewBox="0 0 24 24"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8z"/><path d="M12 8v5M12 16v.01"/></symbol>
+  <symbol id="i-bat" viewBox="0 0 24 24"><rect x="3" y="8" width="16" height="9" rx="2"/><path d="M21 11v3M7 11v3"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0012 0M12 17v4"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6-5.5-6-10a6 6 0 0112 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.500l4.5 4.500L19 7"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v10h12V10"/></symbol>
+  <symbol id="i-sig" viewBox="0 0 24 24"><path d="M5 19v-3M10 19v-7M15 19V8M20 19V4"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6M16 5a3 3 0 010 6M18 14c2 .8 3 3 3 6"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M12 3l7 17-7-4-7 4z" fill="currentColor"/></symbol>
+  <symbol id="i-torch" viewBox="0 0 24 24"><path d="M8 3h8v4l-2 3v11h-4V10L8 7z"/><path d="M12 13v2"/></symbol>
+  <symbol id="i-siren" viewBox="0 0 24 24"><path d="M7 18v-6a5 5 0 0110 0v6M5 21h14M12 3v2M4 7l1.5 1M20 7l-1.5 1"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-uarrow" viewBox="0 0 24 24"><path d="M12 21V9M6 14l6-6 6 6M5 4h14" /></symbol>
+ 
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="1.8"/><path d="M11 21l2-6-3-3 1-4 4 2 2 3M8 12l-2 3"/></symbol>
+  <symbol id="i-stay" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3"/><circle cx="12" cy="12" r="2"/></symbol>
+  <symbol id="i-call" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h4M7 14h6M16 10v.01"/></symbol>
+  <symbol id="i-cold" viewBox="0 0 24 24"><path d="M12 3v18M5 7l14 10M19 7L5 17"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14A8 8 0 019.5 4 8 8 0 1020 14z"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></symbol>
+</defs>
+</svg>
+<div class="bar" role="toolbar" aria-label="Preview options"><nav class="navlinks"><a href="active-trek.html" aria-current="page">Active Trek</a><a href="lost-mode.html">Lost mode</a><a href="friend-sos.html">Friend SOS</a><a href="fall-countdown.html">Fall countdown</a><a href="sos-active.html">SOS active</a><a href="components.html">Components</a></nav><span style="flex:1"></span><button class="tg" data-p="sun" aria-pressed="false">Sunlight</button><button class="tg" data-p="glove" aria-pressed="false">Glove</button><button class="tg" data-p="left" aria-pressed="false">Left-handed</button><button class="tg" data-p="reduce" aria-pressed="false">Reduce motion</button><button class="tg" data-p="ts" aria-pressed="false">Text 1.5×</button></div>
+<div class="layout">
+
+<div class="phone" id="phone" aria-label="Active trek screen">
+  <div class="zone-glance" id="hud" data-s="ok">
+    <div class="hud-top"><span class="caption" id="acc"></span><span id="tagslot"></span><span class="caption" style="display:flex;gap:4px;align-items:center"><svg class="i"><use href="#i-bat"/></svg> 78%</span></div>
+    <div class="hud-main">
+      <div class="dial" id="dial" data-s="ok"><svg class="i arrow" id="arr"><use href="#i-arrow"/></svg><svg class="i glyph" id="glyph" style="display:none;width:60%;height:60%"><use href="#i-uturn"/></svg></div>
+      <div class="hero-wrap"><div class="hero" id="hero"></div><div class="sub" id="sub"></div></div>
+    </div>
+    <div class="tripwrap" id="trip"></div>
+    <div class="pausedline" id="paused" hidden></div>
+    <div id="toastslot"></div>
+  </div>
+
+  <div class="mapzone" id="mapzone" aria-label="Offline map. Drag to pan; it recenters after 8 seconds.">
+    <svg id="map" viewBox="0 0 360 380" preserveAspectRatio="xMidYMid slice">
+      <g id="pan"><g id="cam"><g id="contours"></g><path id="route" fill="none"/><g id="dyn"></g></g></g>
+    </svg>
+    <div class="alt" id="alt">3,214 m</div>
+  </div>
+
+  <div id="snoozeslot" style="padding:0 18px 10px;display:none"></div>
+  <button class="gbar-row" id="gbar" aria-label="Group status, opens radar"></button>
+
+  <div class="deck" id="dock">
+    <div id="sosw"></div>
+    <button class="deckkey" id="pinb" aria-label="Drop a pin"><svg class="i"><use href="#i-pin"/></svg><span>Pin</span></button>
+    <button class="ptt" id="ptt" data-s="idle" aria-label="Hold to talk"></button>
+  </div>
+</div>
+
+<aside class="side">
+  <div class="grp"><h2>State (HUD tint, tag, instruction, dial and map change together in 220 ms)</h2><div class="ctl" id="c-state"></div></div>
+  <div class="grp"><h2>Overlays</h2><div class="ctl" id="c-over"></div></div>
+  <div class="grp"><h2>PTT button state</h2><div class="ctl" id="c-ptt"></div></div>
+  <div class="grp"><h2>What the phone does now</h2>
+    <div class="vbox" id="hlog">haptic: <b>none</b></div>
+    <div class="vbox" id="vlog">voice: <b>none</b></div></div>
+  <div class="grp"><h2>Try</h2>
+    <ul class="notes" style="width:auto">
+      <li>Drag the map. It recenters itself after 8 s.</li>
+      <li>Hold SOS for 3 s: continues to <a href="sos-active.html" style="color:var(--nav)">SOS active</a>.</li>
+      <li>In Off route, tap "I know, exploring".</li>
+      <li>Hold PTT (idle to talking). Tap the chevron for quick messages.</li>
+      <li>Toggle Left-handed, Glove, Sunlight, Hindi, Text 1.5×.</li>
+    </ul></div>
+  <div class="grp"><h2>Notes</h2><p class="label">Element reasons, states, copy, haptics: <b>active-trek.md</b>. Map contours are generated sample data; real tiles arrive in M0.</p></div>
+</aside>
+</div>
+
+<script>/* Shared runtime for D2 prototypes. Exposes window.P. */
+(function(){
+'use strict';
+const P=window.P={};
+const $=P.$=(s,r)=>(r||document).querySelector(s);
+const $$=P.$$=(s,r)=>[...(r||document).querySelectorAll(s)];
+
+/* ---- preferences (shared across the D2 pages) ---- */
+const KEY='pagdandi-prefs-v1';
+const prefs=P.prefs={sun:0,glove:0,hi:0,left:0,reduce:0,ts:0};
+try{Object.assign(prefs,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){}
+prefs.hi=0; // English only (decision 2026-10-27)
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(prefs))}catch(e){}};
+P.listeners=[];
+P.T=(en,h)=>prefs.hi?h:en;
+P.ic=(n,c,st)=>`<svg class="i ${c||''}"${st?` style="${st}"`:''}><use href="#i-${n}"/></svg>`;
+P.apply=function(){
+  const b=document.body;
+  b.classList.toggle('sun',!!prefs.sun); b.classList.toggle('glove',!!prefs.glove);
+  b.classList.toggle('hi',!!prefs.hi); b.classList.toggle('left',!!prefs.left);
+  b.classList.toggle('reduce',!!prefs.reduce||matchMedia('(prefers-reduced-motion: reduce)').matches);
+  b.classList.toggle('ts15',!!prefs.ts);
+  $$('.tg[data-p]').forEach(t=>t.setAttribute('aria-pressed',!!prefs[t.dataset.p]));
+  const d=$('#dock'); if(d)d.classList.toggle('left',!!prefs.left);
+  $$('.t').forEach(e=>{ if(!e.dataset.en)e.dataset.en=e.textContent; e.textContent=prefs.hi?e.dataset.hi:e.dataset.en });
+};
+$$('.tg[data-p]').forEach(t=>t.addEventListener('click',()=>{
+  prefs[t.dataset.p]=prefs[t.dataset.p]?0:1; save(); P.apply(); P.listeners.forEach(f=>f(t.dataset.p)); }));
+
+/* ---- haptic / voice log (a visible stand-in for the phone's vibrator and speaker) ---- */
+const hasVib=!!navigator.vibrate;
+P.hap=function(txt,pat){
+  const el=$('#hlog'); if(el)el.innerHTML='haptic: <b>'+txt+'</b>'+(hasVib?'':' (no vibrator here)');
+  if(hasVib&&pat)try{navigator.vibrate(pat)}catch(e){} };
+P.say=function(en,hi){ const el=$('#vlog'); if(el)el.innerHTML='voice (after chime): <b>“'+(prefs.hi?hi:en)+'”</b>' };
+P.go=url=>{ setTimeout(()=>{location.href=url},450) };
+
+/* ---- helpers ---- */
+P.shortest=(cur,target)=>cur+(((target-cur)%360+540)%360-180);
+const TAGS=P.TAGS={ok:['ok','On route','रास्ते पर'],junction:['fork','Junction ahead','आगे दोराहा'],off:['warn','Off route','रास्ते से हटे'],
+  wrong:['uturn','Wrong way','गलत दिशा'],gps:['gps','GPS lost','GPS सिग्नल नहीं'],regroup:['radar','Regrouping','एकजुट हो रहे हैं'],
+  sos:['sos','SOS','SOS'],lost:['stay','Lost mode','खोए हुए'],flost:['radar','Friend out of range','साथी सीमा से बाहर'],
+  fsos:['sos','Friend SOS','साथी का SOS'],fall:['warn','Fall detected','गिरना पता चला']};
+P.tag=k=>`<span class="tag" data-s="${k}">${P.ic(TAGS[k][0])}${P.T(TAGS[k][1],TAGS[k][2])}</span>`;
+P.mkCtl=function(el,items,fn,first){
+  el.innerHTML=items.map((it,i)=>`<button data-s="${it[0]}" aria-pressed="${!!first&&i===0}">${it[1]}</button>`).join('');
+  el.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b)return;
+    if(!b.dataset.s.startsWith('_'))$$('button',el).forEach(x=>x.setAttribute('aria-pressed',x===b));
+    fn(b.dataset.s,b) });
+};
+
+/* ---- HoldButton ---- */
+P.holdRound=(label,secs,col,d,aria)=>`<div class="hold" role="button" tabindex="0" aria-label="${aria}" data-secs="${secs}" style="--c:${col};--d:${d}px"><svg class="ring" viewBox="0 0 100 100"><rect class="track" x="4" y="4" width="92" height="92" rx="22" pathLength="100"/><rect class="prog" x="4" y="4" width="92" height="92" rx="22" pathLength="100"/></svg><span class="face">${label}</span></div>`;
+P.holdWide=(label,secs,col,aria,icon)=>`<div class="hold wide" role="button" tabindex="0" aria-label="${aria}" data-secs="${secs}" style="--c:${col}"><div class="fill"></div><span class="face">${icon?P.ic(icon):''}<span>${label}</span></span></div>`;
+P.wireHold=function(h,onDone){
+  const secs=+h.dataset.secs, prog=h.querySelector('.prog'), fill=h.querySelector('.fill'), C=100;
+  if(prog){prog.style.strokeDasharray=C;prog.style.strokeDashoffset=C}
+  let raf=0,t0=0,last=0,done=false,active=false;
+  const set=f=>{ if(prog)prog.style.strokeDashoffset=C*(1-f); if(fill)fill.style.transform=`scaleX(${f})` };
+  function step(now){ const f=Math.min(1,(now-t0)/(secs*1000)); set(f); const s=Math.floor((now-t0)/1000);
+    if(s>last){last=s;P.hap('tick '+s+' of '+secs,10)}
+    if(f>=1){done=true;active=false;h.classList.add('done');P.hap('one strong pulse · hold complete',[0,200]);if(onDone)onDone();return}
+    raf=requestAnimationFrame(step) }
+  function start(){ if(done||active)return; active=true; h.classList.remove('release'); t0=performance.now(); last=0; P.hap('tap tick 10 ms',10); raf=requestAnimationFrame(step) }
+  function stop(){ if(!active)return; active=false; cancelAnimationFrame(raf); h.classList.add('release'); set(0); P.hap('released early · springs back') }
+  h.addEventListener('pointerdown',e=>{ h.setPointerCapture(e.pointerId); start() });
+  ['pointerup','pointercancel'].forEach(ev=>h.addEventListener(ev,stop));
+  h.addEventListener('keydown',e=>{ if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();start()} });
+  h.addEventListener('keyup',e=>{ if(e.key===' '||e.key==='Enter')stop() });
+  h.addEventListener('contextmenu',e=>e.preventDefault());
+};
+
+/* ---- LargeToggle ---- */
+P.ltogHTML=(k,on)=>{ const n={torch:['Torch strobe','टॉर्च स्ट्रोब'],siren:['Siren','सायरन']}[k];
+  return `<div class="ltog" role="button" tabindex="0" aria-pressed="${!!on}" aria-label="${n[0]}" data-k="${k}">${P.ic(k)}<span><span class="lt-n">${P.T(n[0],n[1])}</span><br><span class="lt-s">${on?P.T('On','चालू'):P.T('Off','बंद')}</span></span></div>` };
+P.wireLT=function(t,onChange){
+  const flip=()=>{ const on=t.getAttribute('aria-pressed')!=='true'; t.setAttribute('aria-pressed',on);
+    t.querySelector('.lt-s').textContent=on?P.T('On','चालू'):P.T('Off','बंद'); P.hap('1 short ('+t.dataset.k+(on?' on':' off')+')',30); if(onChange)onChange(t.dataset.k,on) };
+  t.addEventListener('click',flip);
+  t.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();flip()} });
+};
+
+/* ---- generic button activation (click + Space/Enter) ---- */
+P.press=function(el,fn){ el.addEventListener('click',fn); el.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();fn()} }) };
+
+/* ---- DirectionDial markup ---- */
+P.dialHTML=(st,o)=>{ o=o||{}; return `<div class="dial ${o.big?'big':''}" data-s="${st}" ${o.id?`id="${o.id}"`:''}>${P.ic('arrow','arrow','transform:rotate('+(o.ang||0)+'deg)')}${o.big?'<svg class="ticks" viewBox="0 0 112 112" aria-hidden="true">'+ticks()+'</svg>':''}</div>` };
+function ticks(){ let t=''; for(let i=0;i<360;i+=30){const m=i%90===0,r1=m?44:48,r2=54,sn=Math.sin(i*Math.PI/180),cs=Math.cos(i*Math.PI/180);
+  t+=`<line x1="${56+sn*r2}" y1="${56-cs*r2}" x2="${56+sn*r1}" y2="${56-cs*r1}" stroke="currentColor" stroke-width="${m?2:1}" opacity="${m?.9:.4}"/>`} return t }
+
+document.addEventListener('DOMContentLoaded',()=>{ P.apply(); });
+})();
+</script>
+<script>
+(function(){
+'use strict';
+const {$,$$,T,ic,tag,hap,say,mkCtl,shortest}=P;
+
+/* ---------- state table ---------- */
+const S={
+ ok:{h:['1.4 km','1.4 कि.मी.'],s:['to Kalipokhri · stay on ridge','कालीपोखरी तक · धार पर चलें'],a:0,glyph:null,
+     hap:['none, steady state (1 short only when returning from off route or wrong way)',null],voice:null},
+ junction:{h:['Fork in 80 m','80 मी. पर दोराहा'],s:['keep left · path going uphill','बाएँ चलें · रास्ता ऊपर जा रहा है'],a:-35,glyph:null,
+     hap:['2 short (junction ahead)',[60,120,60]],voice:['Fork in 80 metres. Keep left, going uphill.','80 मीटर पर दोराहा। बाएँ चलें, रास्ता ऊपर जा रहा है।']},
+ off:{h:['42 m off trail','रास्ते से 42 मी. दूर'],s:['turn back · trail is to your left','वापस मुड़ें · रास्ता बाईं ओर है'],a:-125,glyph:null,
+     hap:['3 long, repeating until resolved or snoozed (off route)',[400,160,400,160,400]],voice:['Warning. You are 40 metres off the trail. Stop and check.','सावधान। आप रास्ते से 40 मीटर दूर हैं। रुकिए और देखिए।']},
+ wrong:{h:['Heading back to start','शुरुआत की ओर जा रहे हैं'],s:['turn around to continue','आगे जाने के लिए पलटें'],a:180,glyph:'uturn',
+     hap:['3 short (wrong way)',[70,90,70,90,70]],voice:['You are heading back to the start. Turn around to continue.','आप शुरुआत की ओर जा रहे हैं। आगे जाने के लिए पलटिए।']},
+ gps:{h:['GPS signal weak','GPS सिग्नल कमज़ोर'],s:['last fix 2 min ago · keep to the trail','2 मिनट पहले की स्थिति · रास्ते पर रहें'],a:0,glyph:'gps',
+     hap:['1 long (GPS lost)',[400]],voice:['GPS signal weak. Keep to the trail.','GPS सिग्नल कमज़ोर है। रास्ते पर बने रहिए।']},
+ regroup:{h:['Rahul · 210 m','राहुल · 210 मी.'],s:['last seen 3 min ago · downhill','3 मिनट पहले देखा · नीचे की ओर'],a:160,glyph:null,
+     hap:['2 long (friend lost)',[400,200,400]],voice:['Rahul is 210 metres behind.','राहुल 210 मीटर पीछे हैं।']}
+};
+let st='ok', prev='ok', stationary=false, toast=null, toastTimer=null, pttS='idle', snzEnd=0, snzTimer=null, ang=0, uncTimer=null, uncR=14;
+
+/* ---------- HUD ---------- */
+function renderStatic(){
+  $('#trip').innerHTML=`<div class="caption">${T('to camp','कैंप तक')}</div><div class="trip ${stationary?'paused':''}">
+   <div><div class="num">6.2<small>${T('km','कि.मी.')}</small></div><div class="caption">${T('distance','दूरी')}</div></div>
+   <div><div class="num">320<small>${T('m','मी.')}</small></div><div class="caption">${T('climb','चढ़ाई')}</div></div>
+   <div><div class="num">2:10<small>${T('h','घं.')}</small></div><div class="caption">${T('time','समय')}</div></div></div>`;
+  const p=$('#paused'); p.hidden=!stationary; p.textContent=T('Paused · tracking resumes when you move','रुका हुआ · चलने पर ट्रैकिंग फिर शुरू होगी');
+  $('#sosw').innerHTML=P.holdRound('<span style="color:var(--sos)">SOS</span><small>hold 3 s</small>',3,'var(--sos)',80,'SOS, hold 3 seconds');
+  P.wireHold($('#sosw .hold'),()=>{ $('#hlog').innerHTML='haptic: <b>one strong pulse · SOS started</b>'; P.go('sos-active.html?from=trek') });
+  $('#ptt').innerHTML=pttInner();
+}
+function pttInner(){
+  if(pttS==='talking')return `<span class="in"><span class="wave live"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>${T('Talking','बोल रहे हैं')}</span></span>`;
+  if(pttS==='receiving')return `<span class="in"><span class="wave live" style="color:var(--nav)"><i></i><i></i><i></i><i></i><i></i></span><span style="font-size:18px">Rahul</span></span>`;
+  if(pttS==='busy')return `<span class="in">${ic('mic','','width:24px;height:24px')}<span style="font-size:13px">${T('Rahul is talking','राहुल बोल रहे हैं')}</span></span>`;
+  return `<span class="in"><span class="qm-hint">${ic('up','','width:14px;height:14px')}${T('quick msgs','त्वरित संदेश')}</span>${ic('mic','','width:30px;height:30px')}<span>${T('Hold to talk','बोलने के लिए दबाए रखें')}</span></span>`;
+}
+function renderPtt(){ const p=$('#ptt'); p.dataset.s=pttS; p.innerHTML=pttInner() }
+function renderHud(first){
+  const d=S[st];
+  $('#hud').dataset.s=st;
+  $('#acc').textContent=st==='gps'?'GPS ±—':'GPS ±6 m';
+  $('#tagslot').innerHTML=tag(st);
+  if(!first&&st==='ok'&&(prev==='off'||prev==='wrong')){ $('#tagslot .tag').classList.add('settle'); hap('1 short (back on route, tag settles)',30) }
+  $('#dial').dataset.s=st;
+  const arr=$('#arr'), gl=$('#glyph');
+  if(d.glyph){ arr.style.display='none'; gl.style.display=''; gl.innerHTML=`<use href="#i-${d.glyph}"/>` } else { arr.style.display=''; gl.style.display='none';
+    ang=shortest(ang,d.a); arr.style.transform=`rotate(${ang}deg)` }
+  $('#hero').textContent=T(d.h[0],d.h[1]); $('#sub').textContent=T(d.s[0],d.s[1]);
+  $('#alt').textContent=st==='off'?'3,209 m':'3,214 m';
+  // group bar
+  const behind=(st!=='regroup');
+  $('#gbar').dataset.s=st==='regroup'?'regroup':(st==='gps'?'warn':'ok');
+  $('#gbar').innerHTML=st==='regroup'
+    ? `${ic('radar')}<span class="main">${T('Regrouping','एकजुट हो रहे हैं')}</span><span class="fact">${T('Rahul · 210 m','राहुल · 210 मी.')}</span>${ic('chev','chev')}`
+    : `${ic('people')}<span class="main">${T('4 of 4 in range','4 में से 4 सीमा में')}</span><span class="fact">${st==='gps'?T('distances paused · GPS lost','दूरी रुकी हुई · GPS नहीं'):T('Rahul 60 m behind','राहुल 60 मी. पीछे')}</span>${ic('chev','chev')}`;
+  // snooze slot
+  const sl=$('#snoozeslot'); sl.style.display=st==='off'?'block':'none'; if(st==='off')renderSnooze();
+  // toast
+  $('#toastslot').innerHTML=toast?`<div class="toast ${toast.out?'out':''}" role="status" aria-live="polite">${ic('send')}<span><b>${toast.from}</b> ${T(toast.en,toast.hi)}</span></div>`:'';
+  drawMap();
+}
+/* ---------- snooze ---------- */
+function renderSnooze(){ const b=$('#snoozeslot'); const left=Math.max(0,Math.ceil((snzEnd-Date.now())/1000));
+  const on=snzEnd&&left>0; if(!on){snzEnd=0;clearInterval(snzTimer)}
+  b.innerHTML=`<button class="snooze" data-s="${on?'on':'off'}" aria-label="${on?'Alerts snoozed, tap to resume':'I know, exploring. Snooze off-route alerts for 10 minutes'}">${on?ic('clock')+`<span>${T('Snoozed','बंद किया')} ${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}<br><small>${T('Tap to resume alerts','अलर्ट फिर चालू करने के लिए दबाएँ')}</small></span>`
+    :ic('eye')+`<span>${T('I know, exploring','पता है, खोज रहे हैं')}<br><small>${T('Silences off-route alerts for 10 min','10 मिनट के लिए रास्ते से हटने की चेतावनी बंद')}</small></span>`}</button>`;
+  b.firstChild.addEventListener('click',()=>{ if(snzEnd){snzEnd=0;hap('1 short · off-route alerts resume',30)} else {snzEnd=Date.now()+600000;clearInterval(snzTimer);snzTimer=setInterval(()=>{if(!document.hidden&&st==='off')renderSnooze()},1000);hap('tap tick · off-route buzz stops for 10 min',10)} renderSnooze() });
+}
+
+/* ---------- map ---------- */
+const NS='http://www.w3.org/2000/svg';
+const ROUTE='M40 470 C100 450 150 430 200 400 S 270 340 310 300 S 370 230 420 190 S 500 120 560 80';
+(function initMap(){
+  $('#route').setAttribute('d',ROUTE);
+  // sample contours: rings around two peaks with noise
+  let c='';
+  const ring=(cx,cy,r,k,ax)=>{ let d=''; for(let t=0;t<=360;t+=10){const a=t*Math.PI/180, n=1+.07*Math.sin(3*a+k)+.04*Math.sin(5*a+2*k);
+      const x=Math.cos(a)*r*ax*n, y=Math.sin(a)*r*n, rot=-.35, X=cx+x*Math.cos(rot)-y*Math.sin(rot), Y=cy+x*Math.sin(rot)+y*Math.cos(rot);
+      d+=(t?'L':'M')+X.toFixed(1)+' '+Y.toFixed(1)} return d+'Z' };
+  for(let i=1;i<=13;i++)c+=`<path d="${ring(430,140,i*26,i,1.5)}" fill="none" stroke="var(--contour)" stroke-width="${i%5===0?2.4:1.4}"/>`;
+  for(let i=1;i<=9;i++)c+=`<path d="${ring(110,330,i*24,i+3,1.3)}" fill="none" stroke="var(--contour)" stroke-width="${i%5===0?2.4:1.4}"/>`;
+  $('#contours').innerHTML=c;
+  $('#route').setAttribute('stroke','var(--nav)'); $('#route').setAttribute('stroke-width','4'); $('#route').setAttribute('stroke-linecap','round');
+})();
+const rp=$('#route');
+function at(L){ const p=rp.getPointAtLength(L), q=rp.getPointAtLength(L+1.5); return {x:p.x,y:p.y,a:Math.atan2(q.y-p.y,q.x-p.x)} }
+function bearingDeg(rad){ return rad*180/Math.PI+90 }   // 0 = up
+function sample(p,from,to,step){ let d=''; for(let l=from;l<=to;l+=step){const q=p.getPointAtLength(l);d+=(d?'L':'M')+q.x.toFixed(1)+' '+q.y.toFixed(1)} return d }
+function drawMap(){
+  const len=rp.getTotalLength(), Lj=len*.52, J=at(Lj);
+  const ba=J.a+.9, dir={x:Math.cos(ba),y:Math.sin(ba)}, perp={x:-dir.y,y:dir.x};
+  const bd=`M${J.x} ${J.y} C${J.x+dir.x*50} ${J.y+dir.y*50} ${J.x+dir.x*110+perp.x*14} ${J.y+dir.y*110+perp.y*14} ${J.x+dir.x*190} ${J.y+dir.y*190}`;
+  const bp=document.createElementNS(NS,'path'); bp.setAttribute('d',bd); $('#dyn').appendChild(bp);
+  let youL=len*.30, you, heading, ref=youL;
+  if(st==='junction'){ youL=Lj-27; ref=youL }
+  you=at(youL); heading=bearingDeg(you.a);
+  if(st==='off'){ const bpnt=bp.getPointAtLength(46); you={x:bpnt.x,y:bpnt.y}; heading=bearingDeg(Math.atan2(J.y-you.y,J.x-you.x)); ref=Lj-27 }
+  if(st==='wrong') heading+=180;
+  const fr=(L,t,out)=>{ const p=at(Math.max(10,Math.min(len-10,L))); const off={x:p.x+9*Math.cos(p.a+1.57),y:p.y+9*Math.sin(p.a+1.57)};
+    return `<g><circle cx="${off.x}" cy="${off.y}" r="13" fill="#000" stroke="${out?'var(--text3)':'var(--ok)'}" stroke-width="2.5" ${out?'stroke-dasharray="3 3"':''}/><text x="${off.x}" y="${off.y+4}" text-anchor="middle" font-size="11" fill="${out?'var(--text2)':'var(--text)'}" font-family="Barlow,sans-serif" font-weight="500">${t}</text></g>` };
+  let g='';
+  // unchosen / taken branch
+  g+=`<path d="${bd}" fill="none" stroke="${st==='off'?'var(--warn)':'var(--text3)'}" stroke-width="${st==='off'?3:3.5}" stroke-linecap="round" ${st==='off'?'stroke-dasharray="1 7"':''}/>`;
+  // breadcrumb (dotted, faint)
+  let crumb=st==='off'?sample(rp,0,Lj,5)+' '+sample(bp,0,46,5).replace('M','L'):sample(rp,0,youL,5);
+  g+=`<path d="${crumb}" fill="none" stroke="var(--text2)" stroke-opacity=".6" stroke-width="3" stroke-dasharray="1 6" stroke-linecap="round"/>`;
+  // junction node
+  g+= st==='junction'
+    ? `<circle cx="${J.x}" cy="${J.y}" r="16" fill="none" stroke="var(--nav)" stroke-width="1.5"/><circle cx="${J.x}" cy="${J.y}" r="8" fill="#000" stroke="var(--nav)" stroke-width="4"/>`
+    : `<circle cx="${J.x}" cy="${J.y}" r="6" fill="#000" stroke="var(--text2)" stroke-width="2"/>`;
+  // friends
+  if(st==='regroup'){ g+=fr(len*.30-70,'RK',true); g+=fr(ref+70,'AS',false); g+=fr(ref+130,'MD',false) }
+  else { g+=fr(ref-20,'RK',false); g+=fr(ref+70,'AS',false); g+=fr(ref+130,'MD',false) }
+  // you
+  if(st==='gps'){ g+=`<circle id="unc" cx="${you.x}" cy="${you.y}" r="${uncR}" fill="none" stroke="var(--signal)" stroke-dasharray="3 4" stroke-width="1.5" style="transition:r 1s linear"/><circle cx="${you.x}" cy="${you.y}" r="8" fill="none" stroke="var(--signal)" stroke-width="3"/>` }
+  else {
+    if(st==='regroup')g+=`<circle class="mk-pulse" cx="${you.x}" cy="${you.y}" r="9" fill="none" stroke="var(--signal)" stroke-width="2"/>`;
+    g+=`<path d="M0 0 L-16 -34 A38 38 0 0 1 16 -34 Z" transform="translate(${you.x} ${you.y}) rotate(${heading})" fill="var(--signal)" opacity=".28"/><circle cx="${you.x}" cy="${you.y}" r="9" fill="var(--signal)" stroke="#000" stroke-width="2"/>`;
+  }
+  $('#dyn').innerHTML=g;
+  $('#cam').style.transform=`translate(${180-you.x}px,${190-you.y}px)`;
+}
+// camera moves with a transition; pan is a separate user offset that returns after 8 s
+const cam=$('#cam'), pan=$('#pan');
+cam.style.transition='transform 320ms var(--ease-out)'; pan.style.transition='none';
+let drag=null, rcTimer=null, pdx=0, pdy=0;
+const mz=$('#mapzone');
+mz.addEventListener('pointerdown',e=>{ clearTimeout(rcTimer); drag={x:e.clientX-pdx,y:e.clientY-pdy}; pan.style.transition='none'; mz.setPointerCapture(e.pointerId); mz.style.cursor='grabbing' });
+mz.addEventListener('pointermove',e=>{ if(!drag)return; pdx=e.clientX-drag.x; pdy=e.clientY-drag.y; pan.style.transform=`translate(${pdx}px,${pdy}px)` });
+['pointerup','pointercancel'].forEach(ev=>mz.addEventListener(ev,()=>{ if(!drag)return; drag=null; mz.style.cursor='grab';
+  clearTimeout(rcTimer); rcTimer=setTimeout(()=>{ pan.style.transition='transform 320ms var(--ease-out)'; pdx=pdy=0; pan.style.transform='translate(0,0)'; hap('map recentered (no haptic)') },8000) }));
+
+/* ---------- uncertainty circle grows while GPS is lost ---------- */
+function startUnc(){ clearInterval(uncTimer); uncR=14; if(st!=='gps')return;
+  uncTimer=setInterval(()=>{ if(st!=='gps'){clearInterval(uncTimer);return} uncR=Math.min(80,uncR+(document.body.classList.contains('reduce')?66:4)); const u=$('#unc'); if(u)u.setAttribute('r',uncR); if(uncR>=80)clearInterval(uncTimer)},1000) }
+
+/* ---------- wiring ---------- */
+function setState(s){ prev=st; st=s; renderHud(false); const d=S[s];
+  if(d.hap[0]&&s!=='ok')hap(d.hap[0],d.hap[1]); else if(s==='ok'&&prev!=='off'&&prev!=='wrong')hap(d.hap[0]);
+  if(d.voice)say(d.voice[0],d.voice[1]); else $('#vlog').innerHTML='voice: <b>none</b>';
+  startUnc(); }
+mkCtl($('#c-state'),[['ok','On route'],['junction','Junction'],['off','Off route'],['wrong','Wrong way'],['gps','GPS lost'],['regroup','Regroup']],setState,true);
+mkCtl($('#c-over'),[['_st','Stationary on/off'],['_to','Quick message toast']],(k)=>{
+  if(k==='_st'){stationary=!stationary;renderStatic();renderHud(true);return}
+  clearTimeout(toastTimer); toast={from:'Rahul',en:'Take left fork',hi:'बाएँ वाला रास्ता लें'}; renderHud(true);
+  hap('1 short · chime, then voice: “Rahul says: Take left fork”',30);
+  toastTimer=setTimeout(()=>{ toast.out=true; renderHud(true); setTimeout(()=>{toast=null;renderHud(true)},220) },6000) });
+mkCtl($('#c-ptt'),[['idle','Idle'],['receiving','Receiving'],['busy','Channel busy']],s=>{pttS=s;renderPtt()},true);
+const ptt=$('#ptt');
+ptt.addEventListener('pointerdown',e=>{ if(pttS==='busy'){hap('low channel-busy beep · 1 short');return} ptt.dataset.prev=pttS; pttS='talking'; ptt.classList.add('down'); renderPtt(); hap('tap tick 10 ms · roger beep (start)',10); ptt.setPointerCapture(e.pointerId) });
+['pointerup','pointercancel'].forEach(ev=>ptt.addEventListener(ev,()=>{ if(pttS==='talking'){ pttS='idle'; ptt.classList.remove('down'); renderPtt(); hap('roger beep (end) · 1 short',30) } }));
+$('#pinb').addEventListener('click',()=>hap('tap tick 10 ms · opens pin types (screen S13, batch D4)',10));
+$('#gbar').addEventListener('click',()=>hap('tap tick · opens Group radar (screen S6, batch D3)',10));
+
+function renderAll(){ renderStatic(); renderHud(true); renderPtt(); P.apply() }
+P.listeners.push(renderAll);
+renderAll();
+})();
+</script>
+</body>
+</html>

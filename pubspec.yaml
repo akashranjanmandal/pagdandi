@@ -1,0 +1,36 @@
+name: pagdandi_workspace
+description: Pagdandi monorepo root (Dart pub workspace + melos).
+publish_to: none
+environment:
+  sdk: ^3.13.2
+workspace:
+  - packages/core_common
+  - packages/core_model
+  - packages/core_ports
+  - packages/native_bridge
+  - packages/testing
+  - app
+dev_dependencies:
+  coverage: ^1.15.0
+  melos: ^8.9.0
+  test: ^1.25.6
+  very_good_analysis: ^10.0.0
+
+melos:
+  name: pagdandi
+  scripts:
+    analyze:
+      description: Static analysis, zero warnings allowed.
+      run: melos exec -- dart analyze --fatal-infos .
+    test:dart:
+      description: Run package:test suites of the pure Dart packages.
+      run: melos exec --dir-exists=test --no-flutter -- dart test
+    test:flutter:
+      description: Run flutter test in Flutter packages.
+      run: melos exec --dir-exists=test --flutter -- flutter test
+    coverage:
+      description: Pure Dart packages with coverage, enforced by tool/check_coverage.dart.
+      run: dart run tool/check_coverage.dart
+    pigeon:
+      description: Regenerate Pigeon bindings.
+      run: cd packages/native_bridge && dart run pigeon --input pigeons/native_api.dart

@@ -1,0 +1,25 @@
+name: native_bridge
+description: Pigeon definitions and Dart adapters that implement core_ports on top of the Kotlin plugin pagdandi_native.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: ^3.13.2
+  flutter: '>=3.3.0'
+dependencies:
+  core_common:
+  core_model:
+  core_ports:
+  flutter:
+    sdk: flutter
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  pigeon: ^26.0.0
+  testing:
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: app.pagdandi.pagdandi_native
+        pluginClass: PagdandiNativePlugin

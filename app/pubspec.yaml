@@ -1,0 +1,41 @@
+name: pagdandi_app
+description: "Pagdandi UI, a thin client that renders state and sends commands."
+publish_to: none
+version: 0.1.0+1
+resolution: workspace
+environment:
+  sdk: ^3.13.2
+dependencies:
+  core_common:
+  core_model:
+  flutter:
+    sdk: flutter
+  flutter_map: ^7.0.2
+  flutter_riverpod: ^3.4.3
+  latlong2: ^0.9.1
+  meta: ^1.19.0
+  native_bridge:
+  path_drawing: ^1.0.1
+  vector_map_tiles: ^8.0.0
+  vector_map_tiles_pmtiles: ^1.5.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  testing:
+flutter:
+  uses-material-design: false
+  fonts:
+    - family: Barlow
+      fonts:
+        - asset: assets/fonts/Barlow-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Barlow-Medium.ttf
+          weight: 500
+    - family: BarlowCondensed
+      fonts:
+        - asset: assets/fonts/BarlowCondensed-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/BarlowCondensed-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/BarlowCondensed-SemiBold.ttf
+          weight: 600

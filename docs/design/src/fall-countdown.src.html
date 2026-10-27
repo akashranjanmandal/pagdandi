@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagdandi fall countdown</title>
+<style>{{CSS}}</style>
+</head>
+<body>
+{{SPRITE}}
+{{BAR}}
+<div class="layout">
+<div class="phone" id="phone" aria-label="Fall countdown screen"></div>
+<aside class="side">
+  <div class="grp"><h2>Timer</h2><div class="ctl" id="c-t"></div></div>
+  <div class="grp"><h2>What the phone does now</h2>
+    <div class="vbox" id="hlog">haptic: <b>none</b></div>
+    <div class="vbox" id="vlog">sound: <b>none</b></div></div>
+  <div class="grp"><h2>Try</h2><ul class="notes" style="width:auto">
+    <li>Tap "I'm OK" (one tap on purpose: the safe action must be the easiest).</li>
+    <li>Hold "Send SOS now" for 3 s, or let the timer run out.</li>
+    <li>"Jump to 8 s" shows the last-10-second behaviour.</li></ul></div>
+  <div class="grp"><h2>Notes</h2><p class="label">Reasons, states, copy, haptics: <b>fall-countdown.md</b>. Shown over the lock screen with the screen woken.</p></div>
+</aside>
+</div>
+<script>{{BASE_JS}}</script>
+<script>
+(function(){
+'use strict';
+const {$,$$,T,ic,tag,hap,mkCtl}=P;
+let st='run', left=60, timer=null, last=0, warnRing=false, hapTimer=null;
+const C=2*Math.PI*44;
+function fmt(n){return Math.ceil(n)}
+function ringCol(){ return warnRing?'var(--warn)':'var(--sos)' }
+function render(){
+  const ph=$('#phone'); let h='';
+  if(st==='run'){
+    h=`<div class="zone-glance" data-s="${warnRing?'fall':'sos'}" style="${warnRing?'background:var(--tint-warn)':''}"><div class="hud-top" style="margin-bottom:0"><span class="caption">${T('Fall detected · 14:31 GPS time','गिरना पता चला · 14:31 GPS समय')}</span>${tag('fall')}</div></div>
+    <div style="padding:20px 18px 0;text-align:center"><div class="display">${T('Did you fall?','क्या आप गिरे?')}</div>
+    <div class="cd" style="margin:14px auto 0;width:176px;height:176px" role="timer" aria-live="off" aria-label="Sending SOS in ${fmt(left)} seconds"><svg viewBox="0 0 100 100"><circle class="t" cx="50" cy="50" r="44"/><circle class="p" id="p" cx="50" cy="50" r="44" style="stroke:${ringCol()};stroke-dasharray:${C};stroke-dashoffset:${C*(1-left/60)}"/></svg><div class="n"><div class="display" id="n" style="font-size:72px">${fmt(left)}</div></div></div>
+    <div class="body" style="margin-top:8px">${T('seconds until SOS is sent','सेकंड में SOS भेजा जाएगा')}</div>
+    <div class="caption" style="margin-top:4px;color:var(--text2)">${T('Detected: hard impact, then no movement for 30 s','पता चला: तेज़ झटका, फिर 30 सेकंड तक कोई हलचल नहीं')}</div></div>
+    <div style="flex:1;display:flex;flex-direction:column;padding:14px 18px 18px;gap:12px;min-height:0"><button class="ok-btn" id="ok" aria-label="I'm OK. Cancel the SOS" style="min-height:0">${ic('check')}<span>${T('I’m OK','मैं ठीक हूँ')}</span></button>
+    <div style="display:flex;${document.body.classList.contains('left')?'':'flex-direction:row-reverse'}"><div style="width:78%">${P.holdWide(T('Send SOS now · hold 3 s','अभी SOS भेजें · 3 सेकंड दबाए रखें'),3,'var(--sos)','Send SOS now, hold 3 seconds','sos')}</div></div></div>`;
+  } else if(st==='sent'){
+    h=`<div class="zone-glance" data-s="sos"><div class="hud-top" style="margin-bottom:0"><span class="caption">GPS ±8 m</span>${tag('sos')}</div></div>
+    <div class="scroll"><div class="big"><div class="display">${T('SOS active','SOS चालू')}</div><div class="sub">${T('SMS will send at first signal · beacon on','पहला सिग्नल मिलते ही SMS जाएगा · बीकन चालू')}</div></div></div>
+    <div class="zone-thumb"><a class="btn primary" href="sos-active.html?from=fall" style="text-decoration:none">${ic('sos')}${T('Open SOS screen','SOS स्क्रीन खोलें')}</a></div>`;
+  } else {
+    h=`<div class="zone-glance" data-s="ok"><div class="hud-top" style="margin-bottom:0"><span class="caption">GPS ±6 m</span><span class="tag" data-s="ok">${ic('ok')}${T('OK','ठीक')}</span></div></div>
+    <div class="scroll"><div class="big"><div class="display">${T('Cancelled','रद्द')}</div><div class="sub">${T('No SOS was sent · tracking continues','कोई SOS नहीं भेजा गया · ट्रैकिंग जारी है')}</div></div></div>
+    <div class="zone-thumb"><a class="btn primary" href="active-trek.html" style="text-decoration:none">${ic('back')}${T('Back to trek','ट्रैक पर वापस')}</a></div>`;
+  }
+  ph.innerHTML=h; wire(); P.apply();
+}
+function wire(){
+  const ok=$('#ok'); if(ok)P.press(ok,()=>{ stop(); st='ok'; render(); hap('1 short · cancelled; alarm stops',30); $('#vlog').innerHTML='sound: <b>alarm stops</b>' });
+  const hb=$('.hold'); if(hb)P.wireHold(hb,()=>{ setTimeout(()=>sendSos('held'),350) });
+}
+function sendSos(why){ stop(); st='sent'; render(); hap('SOS ... --- ... pattern starts · SOS outbox written first',[100,80,100,80,100,200,300,100,300,100,300,200,100,80,100,80,100]); $('#vlog').innerHTML='sound: <b>alarm stops; siren stays off until you turn it on</b>' }
+function stop(){ cancelAnimationFrame(timer); clearInterval(hapTimer) }
+function tick(now){ if(!last)last=now; if(!document.hidden)left=Math.max(0,left-(now-last)/1000); last=now;
+  const p=$('#p'),n=$('#n'); if(p){ p.style.strokeDashoffset=C*(1-left/60); if(document.body.classList.contains('reduce')) p.style.strokeDashoffset=C*(1-Math.ceil(left)/60) } if(n)n.textContent=fmt(left);
+  const t=$('.cd'); if(t&&Math.ceil(left)%5===0)t.setAttribute('aria-label','Sending SOS in '+fmt(left)+' seconds');
+  if(left<=0){ sendSos('timeout'); return } timer=requestAnimationFrame(tick) }
+function start(from){ stop(); left=from; last=0; st='run'; render(); timer=requestAnimationFrame(tick); runHaptics() }
+function runHaptics(){ clearInterval(hapTimer); let lastMode=''; hapTimer=setInterval(()=>{ if(st!=='run')return; const fast=left<=10;
+  const m=fast?'strong pulse every 0.5 s (last 10 s: rate doubled)':'strong pulse every 1 s';
+  if(m!==lastMode){ lastMode=m; hap(m,[0]); $('#vlog').innerHTML='sound: <b>alarm tone, '+(fast?'faster':'steady')+'</b>' } },250) }
+mkCtl($('#c-t'),[['s60','Start 60 s'],['s8','Jump to 8 s']],s=>start(s==='s8'?8:60),false);
+P.listeners.push(()=>render());
+start(60);
+})();
+</script>
+</body>
+</html>

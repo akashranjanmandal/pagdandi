@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagdandi components</title>
+<style>
+/* ===== Tokens (docs/design/tokens.md) ===== */
+:root{
+  --bg:#000; --surface:#0E1114; --raised:#171B1F;
+  --hair:#262C32; --contour:#1A2026;
+  --text:#ECEFF1; --text2:#8A949E; --text3:#6E7A85;
+  --signal:#FF6B1A; --nav:#5CC8E0; --ok:#4CD18A; --warn:#FFB020; --sos:#FF3B30;
+  --tint-nav:#0B1A1F; --tint-warn:#1F1608; --tint-signal:#1F0F05; --tint-sos:#1F0706;
+  --line:1px;            /* hairline */
+  --k:1;                 /* glove: target scale */
+  --sp:1;                /* glove: spacing scale */
+  --fast:120ms; --base:220ms; --slow:320ms;
+  --ease-out:cubic-bezier(.2,.9,.25,1);   /* stiff spring, no overshoot */
+  --ease-in:cubic-bezier(.5,0,.8,.4);
+  --f-text:'Barlow','Roboto','Segoe UI',system-ui,sans-serif;
+  --f-cond:'Barlow Condensed','Roboto Condensed','Arial Narrow',sans-serif;
+  --f-hi:'Noto Sans Devanagari','Nirmala UI','Mangal',sans-serif;
+}
+body.sun{
+  --text:#FFFFFF; --text2:#D0D6DB; --text3:#D0D6DB;
+  --line:2px; --contour:#3A444C; --hair:#4A545D;
+  --tint-nav:#000; --tint-warn:#000; --tint-signal:#000; --tint-sos:#000;
+}
+body.glove{ --k:1.25; --sp:1.15; }
+body.hi{ --f-text:var(--f-hi),'Barlow',sans-serif; --f-cond:var(--f-hi),'Barlow Condensed',sans-serif; }
+body.hi .display,body.hi .hero{line-height:1.2}
+body.reduce *{ animation:none !important; transition:opacity var(--base) linear !important; }
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#000}
+body{background:var(--bg);color:var(--text);font:400 16px/1.35 var(--f-text);
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;padding-bottom:80px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ===== Sheet chrome (not part of the app) ===== */
+.bar{position:sticky;top:0;z-index:20;background:#000;border-bottom:1px solid var(--hair);
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 18px}
+.bar h1{font:500 16px var(--f-text);margin-right:auto}
+.tg{border:1px solid var(--hair);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text2)}
+.tg[aria-pressed=true]{border-color:var(--signal);color:var(--text)}
+main{max-width:1180px;margin:0 auto;padding:0 18px}
+.sec{padding:32px 0 8px;border-bottom:1px solid var(--hair)}
+.sec>h2{font:500 20px var(--f-text)}
+.sec>.why{font-size:13px;color:var(--text2);max-width:640px;margin:4px 0 16px}
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;margin-bottom:24px}
+.stage{width:360px;background:var(--bg);border:1px solid var(--hair);border-radius:12px;overflow:hidden;position:relative}
+.stage.pad{padding:18px}
+.ctl{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;max-width:360px}
+.ctl button{border:1px solid var(--hair);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--text2)}
+.ctl button[aria-pressed=true]{border-color:var(--text);color:var(--text)}
+.notes{width:360px;font-size:13px;color:var(--text2)}
+.notes b{color:var(--text);font-weight:500}
+.notes li{margin-left:16px;margin-bottom:4px}
+.hlog{font:12px/1.2 ui-monospace,Menlo,monospace;color:var(--text2);margin-top:8px;min-height:16px}
+.hlog b{color:var(--signal);font-weight:500}
+
+/* ===== App typography ===== */
+.display{font:500 44px/1 var(--f-cond)}
+.hero{font:500 30px/1.05 var(--f-cond)}
+.title{font:500 20px/1.2 var(--f-text)}
+.body{font:400 16px/1.35 var(--f-text)}
+.label{font:400 13px/1.3 var(--f-text);color:var(--text2)}
+.caption{font:400 12px/1.3 var(--f-text);color:var(--text2)}
+.num{font-family:var(--f-cond);font-weight:500}
+.dim{color:var(--text2)}
+
+/* ===== StatusTag ===== */
+.tag{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px 0 8px;border-radius:8px;
+  border:var(--line) solid currentColor;font:500 13px var(--f-text)}
+.tag[data-s=ok]{color:var(--ok)} .tag[data-s=junction]{color:var(--nav)}
+.tag[data-s=off],.tag[data-s=wrong],.tag[data-s=gps]{color:var(--warn)}
+.tag[data-s=regroup]{color:var(--signal)} .tag[data-s=sos]{color:var(--sos)}
+
+/* ===== HUD (glance zone) ===== */
+.hud{background:var(--surface);border-bottom:var(--line) solid var(--hair);padding:12px 18px 14px;
+  transition:background var(--base) var(--ease-out)}
+.hud[data-s=junction]{background:var(--tint-nav)} .hud[data-s=off],.hud[data-s=wrong],.hud[data-s=gps]{background:var(--tint-warn)}
+.hud[data-s=regroup]{background:var(--tint-signal)} .hud[data-s=sos]{background:var(--tint-sos)}
+.hud-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.hud-main{display:flex;gap:14px;align-items:center}
+.hero-wrap{min-width:0;flex:1}
+.hero-wrap .sub{font:400 16px/1.3 var(--f-text);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.hero-wrap .hero{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color var(--base)}
+
+/* ===== DirectionDial ===== */
+.dial{width:58px;height:58px;border-radius:50%;border:calc(var(--line)*2) solid var(--nav);display:grid;place-items:center;
+  flex:none;position:relative;color:var(--nav);transition:color var(--base),border-color var(--base)}
+.dial.big{width:112px;height:112px}
+.dial[data-s=ok]{color:var(--ok);border-color:var(--ok)} .dial[data-s=off],.dial[data-s=wrong],.dial[data-s=gps]{color:var(--warn);border-color:var(--warn)}
+.dial[data-s=regroup]{color:var(--signal);border-color:var(--signal)} .dial[data-s=sos]{color:var(--sos);border-color:var(--sos)}
+.dial svg.arrow{width:62%;height:62%;transition:transform var(--slow) var(--ease-out)}
+.dial .ticks{position:absolute;inset:-1px}
+
+/* ===== StatTriplet ===== */
+.tripwrap{margin-top:14px;border-top:var(--line) solid var(--hair);padding-top:8px}
+.tripwrap>.caption{margin-bottom:6px}
+.trip{display:grid;grid-template-columns:repeat(3,1fr)}
+.trip>div+div{border-left:var(--line) solid var(--hair);padding-left:12px}
+.trip .num{font-size:26px;line-height:1}
+.trip .num small{font-size:13px;color:var(--text2);margin-left:2px}
+.trip .caption{margin-top:2px}
+.trip.paused .num,.trip.paused .caption{color:var(--text2)}
+.pausedline{margin-top:8px;font-size:16px;color:var(--text)}
+
+/* ===== GroupBar / LinkStrength ===== */
+.gbar{display:flex;align-items:center;gap:10px;min-height:calc(48px*var(--k));padding:0 18px;border-top:var(--line) solid var(--hair);background:var(--surface)}
+.gbar .main{font:500 16px var(--f-text)} .gbar .fact{margin-left:auto;font-size:13px;color:var(--text2);text-align:right}
+.gbar[data-s=warn]{color:var(--warn)} .gbar[data-s=warn] .fact{color:var(--warn)}
+.gbar[data-s=regroup]{background:var(--tint-signal);color:var(--signal)} .gbar[data-s=regroup] .fact{color:var(--signal)}
+.gbar[data-s=ok] .i{color:var(--ok)}
+.link{display:inline-flex;align-items:flex-end;gap:2px;height:16px}
+.link i{display:block;width:4px;background:var(--text3);border-radius:1px}
+.link i:nth-child(1){height:6px}.link i:nth-child(2){height:11px}.link i:nth-child(3){height:16px}
+.link[data-n="3"] i{background:var(--ok)} .link[data-n="2"] i:nth-child(-n+2){background:var(--warn)} .link[data-n="1"] i:nth-child(1){background:var(--warn)}
+.lrow{display:flex;align-items:center;gap:12px;min-height:calc(56px*var(--k));padding:0 18px;border-bottom:var(--line) solid var(--hair)}
+.lrow .nm{font-weight:500;min-width:62px}
+.lrow .w{font-size:13px;min-width:92px}
+.lrow .seen{margin-left:auto;font-size:13px;color:var(--text2)}
+.av{width:36px;height:36px;border-radius:50%;border:calc(var(--line)*2) solid var(--ok);display:grid;place-items:center;font:500 13px var(--f-text);flex:none}
+.av.out{border-color:var(--text3);border-style:dashed;color:var(--text2)}
+
+/* ===== Buttons: PTT, Hold, Dock ===== */
+.dock{position:relative;height:calc(150px*var(--k));background:var(--bg);border-top:var(--line) solid var(--hair);padding:0 18px}
+.dock.left .ptt-w{left:18px;right:auto} .dock.left .sos-w{right:18px;left:auto}
+.dock .ptt-w{position:absolute;right:18px;bottom:18px;text-align:center}
+.dock .sos-w{position:absolute;left:18px;bottom:22px;text-align:center}
+.dock .pin-w{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);text-align:center}
+.ptt{width:calc(104px*var(--k));height:calc(104px*var(--k));border-radius:28px;background:var(--signal);color:#000;
+  display:grid;place-items:center;font:500 16px/1.1 var(--f-text);text-align:center;transition:background var(--fast),transform var(--fast) var(--ease-out);
+  position:relative;user-select:none;-webkit-user-select:none;touch-action:none}
+.ptt:active,.ptt.down{transform:scale(.96)}
+.ptt[data-s=talking]{background:var(--signal)}
+.ptt[data-s=receiving]{background:var(--raised);color:var(--text);border:calc(var(--line)*2) solid var(--nav)}
+.ptt[data-s=busy]{background:var(--raised);color:var(--text2);border:calc(var(--line)*2) dashed var(--text3)}
+.ptt .in{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 8px}
+.wave{display:flex;align-items:center;gap:3px;height:28px}
+.wave i{display:block;width:4px;border-radius:2px;background:currentColor;height:6px}
+.wave.live i{animation:wv 700ms ease-in-out infinite alternate}
+@keyframes wv{from{height:5px}to{height:26px}}
+.wave i:nth-child(2n){animation-delay:-.2s}.wave i:nth-child(3n){animation-delay:-.45s}.wave i:nth-child(5n){animation-delay:-.1s}
+.cap-q{display:flex;align-items:center;justify-content:center;gap:2px;font-size:12px;color:var(--text2);margin-bottom:6px;min-height:calc(24px*var(--k))}
+.pinb{width:calc(56px*var(--k));height:calc(56px*var(--k));border-radius:16px;border:calc(var(--line)*2) solid var(--text2);display:grid;place-items:center}
+.pinb:active{background:var(--raised)}
+.under{font-size:12px;color:var(--text2);margin-top:6px}
+
+.hold{position:relative;display:inline-grid;place-items:center;border-radius:20px;user-select:none;-webkit-user-select:none;touch-action:none;
+  width:calc(var(--d,66px)*var(--k));height:calc(var(--d,66px)*var(--k))}
+.hold svg.ring{position:absolute;inset:0;width:100%;height:100%}
+.hold .track{fill:none;stroke:var(--c,var(--text));stroke-opacity:.35;stroke-width:calc(3px + var(--line))}
+.hold .prog{fill:none;stroke:var(--c,var(--text));stroke-width:calc(4px + var(--line));stroke-linecap:round}
+.hold .face{font:500 13px/1.1 var(--f-text);color:var(--c,var(--text));text-align:center;position:relative}
+.hold.release .prog{transition:stroke-dashoffset 260ms var(--ease-out)}
+.hold.done .face{color:#000}
+.hold.done{background:var(--c,var(--text))}
+.hold.wide{border-radius:16px;width:100%;height:calc(72px*var(--k));display:flex;justify-content:center;align-items:center;border:calc(var(--line)*2) solid var(--c);overflow:hidden}
+.hold.wide .fill{position:absolute;inset:0;background:var(--c);opacity:.28;transform-origin:left;transform:scaleX(0)}
+.hold.wide.release .fill{transition:transform 260ms var(--ease-out)}
+.hold.wide .face{font:500 16px var(--f-text);color:var(--text)}
+.hold.wide.done .face{color:#000}
+
+/* ===== Quick message arc ===== */
+.qm{position:relative;height:calc(270px*var(--k))}
+.qm .tgt{position:absolute;width:calc(72px*var(--k));height:calc(72px*var(--k));border-radius:20px;background:var(--raised);
+  border:calc(var(--line)*2) solid var(--hair);display:grid;place-items:center;text-align:center;font:500 13px/1.15 var(--f-text);padding:4px;
+  opacity:0;transform:translate(0,40px) scale(.8);transition:opacity var(--base),transform var(--base) var(--ease-out)}
+.qm.open .tgt{opacity:1;transform:none}
+.qm .tgt.pick{background:var(--signal);color:#000;border-color:var(--signal)}
+.qm .ptt-w{position:absolute;right:18px;bottom:18px;text-align:center}
+
+/* ===== Countdown ===== */
+.cd{position:relative;width:200px;height:200px;margin:0 auto}
+.cd svg{width:100%;height:100%;transform:rotate(-90deg)}
+.cd .t{fill:none;stroke:var(--hair);stroke-width:8}
+.cd .p{fill:none;stroke:var(--sos);stroke-width:8;stroke-linecap:butt}
+.cd .n{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.cd .n .display{font-size:72px}
+
+/* ===== BigInstruction / StatusChecklist ===== */
+.big{padding:24px 18px 16px}
+.big .display{letter-spacing:-.01em}
+.big .sub{margin-top:8px;color:var(--text);font-size:16px}
+.chk{list-style:none}
+.chk li{display:flex;align-items:center;gap:12px;min-height:calc(52px*var(--k));padding:0 18px;border-bottom:var(--line) solid var(--hair)}
+.chk .st{margin-left:auto;font-size:13px;text-align:right}
+.chk .st[data-s=done]{color:var(--ok)} .chk .st[data-s=live]{color:var(--signal)} .chk .st[data-s=wait]{color:var(--warn)} .chk .st[data-s=off]{color:var(--text2)}
+.pulse{width:10px;height:10px;border-radius:50%;background:var(--signal);position:relative;flex:none}
+.pulse.live::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--signal);animation:pl 1.6s ease-out infinite}
+@keyframes pl{from{transform:scale(1);opacity:.9}to{transform:scale(3);opacity:0}}
+
+/* ===== PinTypeGrid ===== */
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:calc(10px*var(--sp));padding:18px}
+.pgrid button{height:calc(88px*var(--k));border:var(--line) solid var(--hair);border-radius:12px;background:var(--surface);
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:12px;text-align:left;font:500 16px var(--f-text)}
+.pgrid button .i{width:24px;height:24px}
+.pgrid button[data-t=danger] .i{color:var(--warn)} .pgrid button.sel{border-color:var(--signal);background:var(--tint-signal)}
+.pgrid button:active{background:var(--raised)}
+
+/* ===== ReadinessRow ===== */
+.rrow{display:flex;align-items:center;gap:12px;min-height:calc(60px*var(--k));padding:0 18px;border-bottom:var(--line) solid var(--hair)}
+.rrow .m{flex:1;min-width:0}
+.rrow .m .a{font-weight:500} .rrow .m .b{font-size:13px;color:var(--text2)}
+.rrow[data-s=ok] .i.s{color:var(--ok)} .rrow[data-s=warn] .i.s{color:var(--warn)} .rrow[data-s=bad] .i.s{color:var(--warn)}
+.fix{height:calc(40px*var(--k));min-width:calc(56px*var(--k));padding:0 14px;border:calc(var(--line)*2) solid var(--signal);border-radius:8px;color:var(--signal);font-weight:500;font-size:13px}
+
+/* ===== HealthBanner ===== */
+.hb{display:flex;align-items:center;gap:12px;min-height:calc(56px*var(--k));padding:0 8px 0 18px;background:var(--tint-warn);
+  border-top:calc(var(--line)*2) solid var(--warn);border-bottom:var(--line) solid var(--hair);color:var(--text)}
+.hb .i.l{color:var(--warn)}
+.hb .tx{flex:1;font-weight:500}.hb .tx small{display:block;font-weight:400;color:var(--text2);font-size:13px}
+.hb .x{width:calc(56px*var(--k));height:calc(56px*var(--k));display:grid;place-items:center;color:var(--text2)}
+body.sun .hb{background:#000}
+
+/* ===== Map / elevation profile ===== */
+.mapbox{height:210px;background:var(--bg);position:relative}
+.mapbox svg{width:100%;height:100%;display:block}
+.ep{padding:12px 18px 14px}
+.ep svg{width:100%;height:112px;display:block;overflow:visible}
+.ep .ax{font-size:11px;fill:var(--text2)}
+.ep-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.ep-top .num{font-size:22px}
+
+
+/* ===== LargeToggle / Snooze / ThumbBack / Toast ===== */
+.ltrow{display:flex;gap:calc(10px*var(--sp))}
+.ltog{flex:1;min-height:calc(88px*var(--k));border-radius:16px;border:calc(var(--line)*2) solid var(--hair);background:var(--surface);padding:12px;
+  display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;
+  transition:background var(--fast),border-color var(--fast)}
+.ltog .i{width:26px;height:26px}
+.ltog .lt-n{font:500 16px var(--f-text)} .ltog .lt-s{font:500 13px var(--f-text);color:var(--text2)}
+.ltog[aria-pressed=true]{background:var(--signal);border-color:var(--signal);color:#000}
+.ltog[aria-pressed=true] .lt-s{color:#000}
+.snooze{width:100%;min-height:calc(72px*var(--k));border-radius:16px;border:calc(var(--line)*2) solid var(--warn);color:var(--text);
+  display:flex;align-items:center;justify-content:center;gap:12px;font:500 16px/1.25 var(--f-text);cursor:pointer;text-align:left;padding:8px 14px}
+.snooze small{color:var(--text2);font:400 13px var(--f-text)}
+.snooze[data-s=on]{border-color:var(--text2);background:var(--raised)}
+.tbbar{display:flex;flex-direction:row-reverse;justify-content:space-between;align-items:center;min-height:calc(88px*var(--k));padding:0 18px;border-top:var(--line) solid var(--hair)}
+body.left .tbbar{flex-direction:row}
+.tb{min-width:calc(112px*var(--k));height:calc(56px*var(--k));border-radius:16px;border:calc(var(--line)*2) solid var(--text2);display:flex;gap:6px;align-items:center;justify-content:center;font:500 16px var(--f-text);cursor:pointer}
+.tb:active{background:var(--raised)}
+.toast{display:flex;align-items:center;gap:10px;min-height:calc(40px*var(--k));margin:12px -18px -14px;padding:8px 18px;background:var(--raised);
+  border-top:var(--line) solid var(--hair);font:500 16px var(--f-text);color:var(--text);transition:opacity var(--base) var(--ease-in)}
+.toast b{font-weight:500;color:var(--nav)} .toast.out{opacity:0}
+.toast span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hold:focus-visible,.ltog:focus-visible,.snooze:focus-visible,.tb:focus-visible{outline:2px solid var(--nav);outline-offset:3px}
+
+.swatch{display:flex;gap:8px;flex-wrap:wrap;max-width:720px}
+.sw{width:112px;border:1px solid var(--hair);border-radius:12px;overflow:hidden;font-size:12px}
+.sw i{display:block;height:48px;border-bottom:1px solid var(--hair)} .sw div{padding:6px 8px;color:var(--text2)}
+.sw b{color:var(--text);font-weight:500;display:block}
+.typ{width:100%;max-width:720px;border-collapse:collapse}
+.typ td{padding:10px 0;border-bottom:1px solid var(--hair);vertical-align:baseline}
+.typ td:first-child{width:130px;font-size:12px;color:var(--text2)}
+
+/* ===== Button system v2: physical keys =====
+   Face (raised), light top rim, thick dark lower edge that squashes on press.
+   Colour lives on the icon or the fill, never on competing outlines.
+   No shadows, no glow: the edge is a flat band. */
+:root{--key:#171B1F;--key-rim:#2E363E;--key-edge:#07090A;--key-orange-rim:#FF9A66;--key-orange-edge:#A3400A}
+body.sun{--key:#0E1114;--key-rim:#A9B2BA;--key-edge:#000}
+.btn,.ltog,.snooze,.tb,.opt,.pinb,.ptt,.hold,.ok-btn{
+  background:var(--key);border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge);
+  transition:transform var(--fast) var(--ease-out),border-bottom-width var(--fast) var(--ease-out),background var(--fast)}
+.btn:active,.ltog:active,.snooze:active,.tb:active,.opt:active,.pinb:active,.ptt:active,.hold:active,.ok-btn:active{
+  transform:translateY(3px);border-bottom-width:1px}
+.btn .i,.snooze .i,.tb .i,.opt .i{width:22px;height:22px}
+.btn.primary{background:var(--signal);border-color:var(--key-orange-rim);border-bottom-color:var(--key-orange-edge);color:#000}
+.btn.primary .i{stroke-width:2.4}
+.btn.dis{background:transparent;border:1px dashed var(--text3);border-bottom:1px dashed var(--text3);color:var(--text2)}
+.btn.dis:active{transform:none}
+/* snooze: neutral key, colour only on the icon */
+.snooze{border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge);color:var(--text)}
+.snooze .i{color:var(--warn)} .snooze[data-s=on]{background:var(--raised)}
+.snooze[data-s=on] .i{color:var(--text2)}
+/* toggles: key with a status lamp */
+.ltog{position:relative;border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge)}
+.ltog::after{content:"";position:absolute;top:12px;right:12px;width:10px;height:10px;border-radius:50%;border:2px solid var(--text3)}
+.ltog[aria-pressed=true]{background:var(--signal);border-color:var(--key-orange-rim);border-bottom-color:var(--key-orange-edge)}
+.ltog[aria-pressed=true]::after{background:#000;border-color:#000}
+/* PTT: the big orange key with an inner bezel */
+.ptt{position:relative;background:var(--signal);color:#000;border:1px solid var(--key-orange-rim);border-bottom:6px solid var(--key-orange-edge)}
+.ptt::before{content:"";position:absolute;inset:7px;border:2px solid rgba(0,0,0,.22);border-radius:19px;pointer-events:none}
+.ptt:active,.ptt.down{transform:translateY(4px);border-bottom-width:2px}
+.ptt[data-s=receiving]{background:var(--key);color:var(--text);border:1px solid var(--nav);border-bottom:6px solid var(--key-edge)}
+.ptt[data-s=receiving]::before{border-color:var(--nav);opacity:.5}
+.ptt[data-s=busy]{background:var(--key);color:var(--text2);border:1px dashed var(--text3);border-bottom:1px dashed var(--text3)}
+.ptt[data-s=busy]::before{display:none}
+/* pin key */
+.pinb{border-radius:16px}
+/* hold buttons: key + coloured progress */
+.hold{border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge)}
+.hold .track{stroke:var(--text3);stroke-opacity:.5}
+.hold.wide{overflow:hidden;border:1px solid var(--key-rim);border-bottom:4px solid var(--key-edge);justify-content:flex-start;padding:0 18px}
+.hold.wide .fill{opacity:.4}
+.hold.wide .face{display:flex;align-items:center;gap:12px;font:500 16px var(--f-text);color:var(--text)}
+.hold.wide .face .i{color:var(--c);width:22px;height:22px}
+.hold.wide.done .face .i{color:#000}
+.hold:active{transform:none}
+.hold.wide:active,.hold:active{border-bottom-width:4px}
+/* big OK key */
+.ok-btn{background:var(--ok);border:1px solid #8BE8B8;border-bottom:8px solid #2A8A59;color:#000}
+.ok-btn:active{transform:translateY(5px);border-bottom-width:3px}
+.ok-btn .i{width:56px;height:56px;stroke-width:2.4;margin-bottom:6px}
+/* sheet options as keys */
+.opt{border-radius:16px}
+/* controls sit on a panel so keys read as raised */
+.dock,.phone .zone-thumb{background:var(--surface)}
+
+</style>
+</head>
+<body>
+<!-- icon sprite: outline, 24 grid, 2 px stroke, round caps (Tabler-style; final app may redraw in same style) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <defs>
+  <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-fork" viewBox="0 0 24 24"><path d="M12 21v-8M12 13L6 7M12 13l6-6M6 7v3M6 7h3M18 7v3M18 7h-3"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/></symbol>
+  <symbol id="i-uturn" viewBox="0 0 24 24"><path d="M8 20V9a4 4 0 018 0v3"/><path d="M13 9l3 3 3-3"/></symbol>
+  <symbol id="i-gps" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M4 4l16 16"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="10"/></symbol>
+  <symbol id="i-sos" viewBox="0 0 24 24"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8z"/><path d="M12 8v5M12 16v.01"/></symbol>
+  <symbol id="i-bat" viewBox="0 0 24 24"><rect x="3" y="8" width="16" height="9" rx="2"/><path d="M21 11v3M7 11v3"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0012 0M12 17v4"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6-5.5-6-10a6 6 0 0112 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.500l4.5 4.500L19 7"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7z"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v10h12V10"/></symbol>
+  <symbol id="i-sig" viewBox="0 0 24 24"><path d="M5 19v-3M10 19v-7M15 19V8M20 19V4"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6M16 5a3 3 0 010 6M18 14c2 .8 3 3 3 6"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M12 3l7 17-7-4-7 4z" fill="currentColor"/></symbol>
+  <symbol id="i-torch" viewBox="0 0 24 24"><path d="M8 3h8v4l-2 3v11h-4V10L8 7z"/><path d="M12 13v2"/></symbol>
+  <symbol id="i-siren" viewBox="0 0 24 24"><path d="M7 18v-6a5 5 0 0110 0v6M5 21h14M12 3v2M4 7l1.5 1M20 7l-1.5 1"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-uarrow" viewBox="0 0 24 24"><path d="M12 21V9M6 14l6-6 6 6M5 4h14" /></symbol>
+ </defs>
+</svg>
+
+<div class="bar" role="toolbar" aria-label="Preview options">
+  <h1>Pagdandi components · D1 rev 2</h1>
+  <button class="tg" id="t-sun" aria-pressed="false">Sunlight</button>
+  <button class="tg" id="t-glove" aria-pressed="false">Glove</button>
+  <button class="tg" id="t-left" aria-pressed="false">Left-handed</button>
+  <button class="tg" id="t-reduce" aria-pressed="false">Reduce motion</button>
+  <button class="tg" id="t-scale" aria-pressed="false">Text 1.5×</button>
+</div>
+
+<main>
+
+<!-- ============ TOKENS ============ -->
+<section class="sec">
+  <h2>Colour</h2>
+  <p class="why">Reason: true black saves OLED battery and keeps night vision. Each accent has exactly one job so colour can be read before words. Red is never used for anything but SOS and real danger.</p>
+  <div class="swatch" id="swatches"></div>
+</section>
+
+<section class="sec">
+  <h2>Type</h2>
+  <p class="why">Reason: condensed numerals stay big in narrow space and read at arm's length; two weights keep hierarchy from becoming noise. Sheet uses fallback fonts; Barlow, Barlow Condensed and Noto Sans Devanagari are bundled in M0.</p>
+  <table class="typ">
+    <tr><td>display 44 cond</td><td><span class="display">1.4 km</span></td></tr>
+    <tr><td>hero 30 cond</td><td><span class="hero">Fork in 80 m</span></td></tr>
+    <tr><td>title 20</td><td><span class="title t" data-hi="आज की यात्रा">Today's trek</span></td></tr>
+    <tr><td>body 16</td><td><span class="body t" data-hi="अपनी जगह पर रुकें">Stay where you are</span></td></tr>
+    <tr><td>label 13</td><td><span class="label t" data-hi="आखिरी बार देखा">Last seen</span></td></tr>
+    <tr><td>caption 12</td><td><span class="caption t" data-hi="±6 मी">±6 m</span></td></tr>
+  </table>
+</section>
+
+<!-- ============ StatusTag ============ -->
+<section class="sec">
+  <h2>StatusTag</h2>
+  <p class="why">Reason: the first thing a tired trekker needs is "am I OK?". Icon shape + word + colour: the shape and word still work for colour-blind users and in sunlight.</p>
+  <div class="row"><div class="stage pad" id="tags" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+   <ul class="notes"><li><b>Shapes</b> differ per state: circle-check, fork, triangle, u-turn, crosshair-slash, rings, octagon.</li><li><b>Red</b> only on SOS.</li><li>No motion on the tag itself; the HUD tint and tag change together in 220 ms.</li></ul></div>
+</section>
+
+<!-- ============ HUD: Dial + Hero + Triplet ============ -->
+<section class="sec">
+  <h2>Glance zone: DirectionDial, HeroInstruction, StatTriplet</h2>
+  <p class="why">Reason: one dominant answer ("what do I do next?") with the three numbers a trekker actually asks for: how far, how much climb, how long. The whole HUD changes together so one glance is enough.</p>
+  <div class="ctl" id="hud-ctl"></div>
+  <div class="row">
+    <div class="stage" id="hud"></div>
+    <div>
+      <div class="ctl" id="dial-ctl"></div>
+      <div class="stage pad" style="display:flex;gap:24px;align-items:center;justify-content:center;height:180px">
+        <div class="dial big" id="dial2" data-s="junction"><svg class="i arrow"><use href="#i-arrow"/></svg><svg class="ticks" viewBox="0 0 112 112"></svg></div>
+        <div><div class="num" style="font-size:40px;line-height:1" id="dial-d">80 m</div><div class="caption" id="dial-c">bearing 20° right</div></div>
+      </div>
+      <ul class="notes" style="margin-top:12px"><li><b>Rotation</b> always takes the shortest angle (350° → 10° turns 20°, not 340°), 320 ms stiff spring, no overshoot.</li><li><b>Ticks</b> at N/E/S/W are the only decoration: bearing scale.</li><li>Big variant is used by Lost mode, Friend SOS and "Guide me to".</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GroupBar / LinkStrength ============ -->
+<section class="sec">
+  <h2>GroupBar and LinkStrength</h2>
+  <p class="why">Reason: "is my group OK?" must be answered without opening anything. One count plus the single most important fact. LinkStrength always carries a word and the last-seen age so a weak bar is never mistaken for a live one.</p>
+  <div class="ctl" id="gb-ctl"></div>
+  <div class="row">
+    <div class="stage" id="gb"></div>
+    <div class="stage">
+      <div class="lrow"><div class="av">RK</div><span class="nm">Rahul</span><span class="link" data-n="3"><i></i><i></i><i></i></span><span class="w" style="color:var(--ok)"><span class="t" data-hi="मज़बूत">strong</span></span><span class="seen"><span class="t" data-hi="अभी">now</span></span></div>
+      <div class="lrow"><div class="av">AS</div><span class="nm">Anita</span><span class="link" data-n="2"><i></i><i></i><i></i></span><span class="w" style="color:var(--warn)"><span class="t" data-hi="कमज़ोर">weak</span></span><span class="seen">40 s</span></div>
+      <div class="lrow"><div class="av out">MD</div><span class="nm">Mohan</span><span class="link" data-n="0"><i></i><i></i><i></i></span><span class="w" style="color:var(--text2)"><span class="t" data-hi="सीमा से बाहर">out of range</span></span><span class="seen"><span class="t" data-hi="3 मिनट पहले">3 min ago</span></span></div>
+    </div>
+  </div>
+  <ul class="notes"><li><b>Avatar ring</b>: solid green = in range; dashed grey = out of range (shape differs, not only colour).</li><li><b>Row height</b> ≥ 56 dp (≥ 70 dp in glove mode).</li></ul>
+</section>
+
+<!-- ============ Dock ============ -->
+<section class="sec">
+  <h2>Dock: PttButton, Pin, SOS HoldButton</h2>
+  <p class="why">Reason: the three things a trekker may need with a thumb. PTT sits under the phone-hand thumb; SOS sits on the opposite side so a pocket or glove can't hit it by accident, and it needs a 3 s hold anyway. Press and hold PTT to try it.</p>
+  <div class="ctl" id="ptt-ctl"></div>
+  <div class="row">
+    <div class="stage" id="dock-stage">
+      <div class="dock" id="dock">
+        <div class="sos-w"><div class="hold" id="h-sos" role="button" tabindex="0" data-secs="3" style="--c:var(--sos)" aria-label="SOS, hold 3 seconds"><svg class="ring" viewBox="0 0 100 100"><rect class="track" x="4" y="4" width="92" height="92" rx="22" pathLength="100"/><rect class="prog" x="4" y="4" width="92" height="92" rx="22" pathLength="100"/></svg><span class="face">SOS</span></div><div class="under t" data-hi="3 सेकंड दबाए रखें">hold 3 s</div></div>
+        <div class="pin-w"><button class="pinb" aria-label="Drop a pin"><svg class="i"><use href="#i-pin"/></svg></button><div class="under t" data-hi="पिन">pin</div></div>
+        <div class="ptt-w"><div class="cap-q"><svg class="i" style="width:14px;height:14px"><use href="#i-up"/></svg><span class="t" data-hi="त्वरित संदेश">quick msgs</span></div>
+          <button class="ptt" id="ptt" data-s="idle" aria-label="Hold to talk"></button></div>
+      </div>
+    </div>
+    <ul class="notes"><li><b>PTT</b> 104 dp (130 dp in glove mode). Idle orange; talking = live waveform; receiving = speaker's name, cyan ring; busy = dashed grey with words, still tappable to explain why.</li><li><b>Pin</b> 56 dp centre: reachable, low-stakes, one tap opens PinTypeGrid.</li><li><b>SOS</b> outline only, never filled until complete: it must not look like the main action.</li><li><b>Handedness</b> mirrors PTT and SOS.</li><li><b>Haptics</b> tap 10 ms tick on press; PTT roger beep start/end.</li></ul>
+  </div>
+  <div class="hlog" id="hlog"></div>
+</section>
+
+<!-- ============ HoldButton ============ -->
+<section class="sec">
+  <h2>HoldButton</h2>
+  <p class="why">Reason: dangerous or irreversible actions must survive a pocket, a glove or a stumble. A hold with visible progress and a tick every second gives the user a chance to let go. Release early and the ring springs back. Try each (press and hold with mouse or finger).</p>
+  <div class="row">
+    <div class="stage pad" style="display:flex;gap:28px;align-items:center;justify-content:center;height:150px;flex-wrap:wrap">
+      <div style="text-align:center"><div class="hold" role="button" tabindex="0" aria-label="SOS, hold 3 seconds" data-secs="3" style="--c:var(--sos);--d:80px"><svg class="ring" viewBox="0 0 100 100"><rect class="track" x="4" y="4" width="92" height="92" rx="22" pathLength="100"/><rect class="prog" x="4" y="4" width="92" height="92" rx="22" pathLength="100"/></svg><span class="face">SOS</span></div><div class="under t" data-hi="3 सेकंड">3 s</div></div>
+      <div style="text-align:center"><div class="hold" role="button" tabindex="0" aria-label="I'm found, hold 3 seconds" data-secs="3" style="--c:var(--ok);--d:80px"><svg class="ring" viewBox="0 0 100 100"><rect class="track" x="4" y="4" width="92" height="92" rx="22" pathLength="100"/><rect class="prog" x="4" y="4" width="92" height="92" rx="22" pathLength="100"/></svg><span class="face t" data-hi="मिल गया">found</span></div><div class="under">3 s</div></div>
+      <div style="text-align:center"><div class="hold" role="button" tabindex="0" aria-label="Cancel, hold 5 seconds" data-secs="5" style="--c:var(--text);--d:80px"><svg class="ring" viewBox="0 0 100 100"><rect class="track" x="4" y="4" width="92" height="92" rx="22" pathLength="100"/><rect class="prog" x="4" y="4" width="92" height="92" rx="22" pathLength="100"/></svg><span class="face t" data-hi="रद्द">cancel</span></div><div class="under">5 s</div></div>
+    </div>
+    <div class="stage pad" style="display:flex;flex-direction:column;gap:10px;justify-content:center;height:150px">
+      <div class="hold wide" role="button" tabindex="0" aria-label="I'm found, hold 3 seconds" data-secs="3" style="--c:var(--ok)"><div class="fill"></div><span class="face"><svg class="i"><use href="#i-ok"/></svg><span>I'm found · hold 3 s</span></span></div>
+      <div class="hold wide" role="button" tabindex="0" aria-label="Cancel SOS, hold 5 seconds" data-secs="5" style="--c:var(--sos)"><div class="fill"></div><span class="face"><svg class="i"><use href="#i-x"/></svg><span>Cancel SOS · hold 5 s</span></span></div>
+    </div>
+    <ul class="notes"><li><b>Haptics</b>: light tick every second while holding; one strong pulse on completion.</li><li><b>Feedback</b> the outline fills clockwise; seconds left are never shown as text, so attention stays on the world, not the screen.</li><li><b>Square</b> (rounded) variant for the dock; <b>wide</b> variant for full-width emergency actions.</li><li>Completed state keeps the filled colour until reset (button below).</li></ul>
+  </div>
+  <div class="ctl"><button id="hold-reset">Reset all</button></div>
+  <div class="hlog" id="hlog2"></div>
+</section>
+
+<!-- ============ Quick messages ============ -->
+<section class="sec">
+  <h2>QuickMessageArc</h2>
+  <p class="why">Reason: four canned messages cover nearly every need on the trail without talking. The arc lies inside thumb sweep above PTT. Large forgiving swipe-up, or tap the chevron; release on a target or tap it.</p>
+  <div class="ctl" id="qm-ctl"></div>
+  <div class="row">
+    <div class="stage"><div class="qm" id="qm">
+      <div class="ptt-w"><div class="cap-q"><svg class="i" style="width:14px;height:14px"><use href="#i-up"/></svg><span class="t" data-hi="त्वरित संदेश">quick msgs</span></div><button class="ptt" data-s="idle" id="ptt2" aria-label="Quick messages"><span class="in"><svg class="i" style="width:28px;height:28px"><use href="#i-mic"/></svg><span class="t" data-hi="बोलने के लिए दबाए रखें">Hold to talk</span></span></button></div>
+    </div><div class="under" style="padding:0 18px 12px" id="qm-out">&nbsp;</div></div>
+    <ul class="notes"><li><b>Targets</b> 72 dp (90 dp in glove mode), editable in Settings.</li><li><b>Sent</b> confirmation is inline text and one short haptic, never a dialog.</li><li><b>Received</b> quick messages show as a one-line toast in the glance zone plus voice (see Toast component below).</li></ul>
+  </div>
+</section>
+
+<!-- ============ Countdown ============ -->
+<section class="sec">
+  <h2>Countdown</h2>
+  <p class="why">Reason: after a detected fall the user may be dazed. One huge number and a draining ring say how long until SOS goes out. The ring is a live loop, so it is allowed to move; everything else stays still.</p>
+  <div class="ctl"><button id="cd-run">Start 60 s</button><button id="cd-fast">Jump to 8 s</button></div>
+  <div class="row">
+    <div class="stage pad" style="padding:24px 18px">
+      <div class="cd"><svg viewBox="0 0 100 100"><circle class="t" cx="50" cy="50" r="44"/><circle class="p" id="cd-p" cx="50" cy="50" r="44"/></svg><div class="n"><div><div class="display" id="cd-n">60</div><div class="label t" data-hi="सेकंड में SOS जाएगा">seconds until SOS</div></div></div></div>
+    </div>
+    <ul class="notes"><li><b>Text</b> "Sending SOS in 47 s" is repeated for TalkBack as a live region updated every 5 s (not every second).</li><li><b>Haptic</b> strong repeated pulse + sound; in the last 10 s the pulse rate doubles.</li><li><b>Reduce motion</b>: ring steps once per second instead of sweeping.</li></ul>
+  </div>
+</section>
+
+<!-- ============ BigInstruction / StatusChecklist ============ -->
+<section class="sec">
+  <h2>BigInstruction and StatusChecklist</h2>
+  <p class="why">Reason: in an emergency the user needs one sentence to follow and the truth about what has actually happened. Big text never claims more than is true: nothing delivered = "SOS active", partly = "delivered to 2 of 3", all = "SOS delivered". Rows list what the app has done, in plain words. "Queued" is never shown as "delivered".</p>
+  <div class="ctl" id="chk-ctl"></div>
+  <div class="row">
+    <div class="stage" id="chk-stage"></div>
+    <ul class="notes"><li><b>Status words</b> replace icons-only states: queued, sending, delivered, broadcasting, armed, off.</li><li><b>Only live things pulse</b> (beacon); done rows are static.</li><li>Row labels are sentences a scared person can read aloud to a rescuer.</li></ul>
+  </div>
+</section>
+
+<!-- ============ LargeToggle ============ -->
+<section class="sec">
+  <h2>LargeToggle</h2>
+  <p class="why">Reason: torch and siren must be switchable with a gloved thumb, and the user must see at once whether they are on. State is shown by fill + word + icon, never colour alone. 88 dp tall (110 dp in glove mode).</p>
+  <div class="row">
+    <div class="stage pad"><div class="ltrow">
+      <div class="ltog" role="button" tabindex="0" aria-pressed="false" aria-label="Torch strobe" data-k="torch"></div>
+      <div class="ltog" role="button" tabindex="0" aria-pressed="false" aria-label="Siren" data-k="siren"></div>
+    </div><div class="hlog" id="hlog3"></div></div>
+    <ul class="notes"><li><b>Off</b>: outline, word "Off". <b>On</b>: solid orange fill, black text, word "On".</li><li><b>Haptic</b> 1 short on every change. Siren plays on the alarm stream, so silent mode does not mute it.</li><li><b>Single tap is allowed</b>: both are reversible and help the user; neither sends anything to other people.</li><li><b>A11y</b> role button, pressed state announced ("Siren, on").</li></ul>
+  </div>
+</section>
+
+<!-- ============ SnoozeButton ============ -->
+<section class="sec">
+  <h2>SnoozeButton</h2>
+  <p class="why">Reason: when someone leaves the trail on purpose, the repeating off-route buzz becomes noise and they stop trusting alerts. One big button in the thumb zone silences that alert for 10 minutes, shows the time left, and a tap undoes it. Only off-route alerts are silenced: SOS, friend and danger alerts never are.</p>
+  <div class="row">
+    <div class="stage pad"><button class="snooze" id="snooze" data-s="off"></button><div class="hlog" id="hlog4"></div></div>
+    <ul class="notes"><li><b>Appears</b> only in Off route state, above the dock.</li><li><b>Height</b> 72 dp (90 dp glove).</li><li><b>Haptic</b> 10 ms tick on snooze; 1 short when alerts resume. The off-route 3-long pattern stops during the snooze.</li><li><b>Counts down live</b> (real 10 min in this sheet); pauses nothing else.</li></ul>
+  </div>
+</section>
+
+<!-- ============ ThumbBack ============ -->
+<section class="sec">
+  <h2>ThumbBack</h2>
+  <p class="why">Reason: the system back gesture is hard with gloves, a stick in the other hand, or a wet screen. A back control at the bottom edge, on the thumb side, is always reachable. Toggle "Left-handed" at the top to mirror it.</p>
+  <div class="row">
+    <div class="stage"><div style="height:120px;display:grid;place-items:center" class="label">sub-screen content (Timeline)</div>
+      <div class="tbbar"><div class="tb" id="tb" role="button" tabindex="0" aria-label="Back"><svg class="i"><use href="#i-back"/></svg><span class="t" data-hi="पीछे">Back</span></div><span class="caption t" data-hi="टाइमलाइन">Timeline</span></div>
+      <div class="hlog" id="hlog6" style="padding:0 18px 10px"></div></div>
+    <ul class="notes"><li><b>Present</b> on every trek-time screen except Active Trek itself (which has the dock).</li><li><b>Position</b> thumb side (right edge for right-handed), 56 dp tall (70 dp glove), icon + word.</li><li><b>Does not replace</b> the system back gesture; both work.</li><li><b>Emergency full-screens</b> (Fall, SOS, Friend SOS) have no Back: their actions are the exits.</li></ul>
+  </div>
+</section>
+
+<!-- ============ Toast ============ -->
+<section class="sec">
+  <h2>Toast (received quick message)</h2>
+  <p class="why">Reason: a friend's "Wait" or "Take left fork" must be seen without opening anything. One line at the bottom of the glance zone with sender and message; the voice reads it aloud after a chime. It adds height to the glance zone (pushing the map down) so it never covers the dial, the hero or the numbers. Auto-hides after 6 s.</p>
+  <div class="ctl" id="toast-ctl"></div>
+  <div class="row">
+    <div class="stage" id="toast-stage"></div>
+    <ul class="notes"><li><b>One line</b>, sender in cyan, message in primary text, ellipsis if long.</li><li><b>Auto-hide</b> 6 s, 220 ms fade. A new message replaces the current one.</li><li><b>Voice</b> chime then "Rahul says: Wait" (English or Hindi), ducking music.</li><li><b>Not a button</b>: nothing to tap, so nothing can be hit by accident; full history lives in Timeline.</li><li><b>A11y</b> polite live region.</li></ul>
+  </div>
+  <div class="hlog" id="hlog5"></div>
+</section>
+
+<!-- ============ PinTypeGrid ============ -->
+<section class="sec">
+  <h2>PinTypeGrid</h2>
+  <p class="why">Reason: marking a place must take one tap while walking. Six large tiles, 2×3, each ≥ 88 dp tall. Position and GPS time are saved on tap; the note comes afterwards.</p>
+  <div class="row">
+    <div class="stage"><div class="pgrid" id="pgrid"></div><div class="under" style="padding:0 18px 14px" id="pg-out">&nbsp;</div></div>
+    <ul class="notes"><li><b>Danger</b> uses the warn colour on the icon only (red is reserved).</li><li><b>Haptic</b> 1 short on save.</li><li>Tile labels are words; the icon is secondary.</li></ul>
+  </div>
+</section>
+
+<!-- ============ ReadinessRow ============ -->
+<section class="sec">
+  <h2>ReadinessRow</h2>
+  <p class="why">Reason: before a trek the only question is "am I ready?". Each requirement is a row with honest state (including age) and one-tap fix when something is missing.</p>
+  <div class="row">
+    <div class="stage" id="rr"></div>
+    <ul class="notes"><li><b>State</b> shown by icon shape (check / triangle / octagon) and words.</li><li><b>Fix</b> button ≥ 56 dp wide in thumb reach; disappears when resolved.</li><li>Weather row shows saved time: "saved 5 h ago".</li></ul>
+  </div>
+</section>
+
+<!-- ============ HealthBanner ============ -->
+<section class="sec">
+  <h2>HealthBanner</h2>
+  <p class="why">Reason: slow-building risks (altitude, storms) need to be noticed without interrupting the trail. One line in the warn colour, tap for detail, dismissible with a 56 dp target.</p>
+  <div class="ctl" id="hb-ctl"></div>
+  <div class="row">
+    <div class="stage" id="hb-stage" style="min-height:120px"></div>
+    <ul class="notes"><li><b>Priority</b> Health is below GroupGap; banner never blocks the dock.</li><li><b>Dismiss</b> hides until condition worsens or 2 h pass.</li></ul>
+  </div>
+</section>
+
+<!-- ============ ElevationProfile ============ -->
+<section class="sec">
+  <h2>ElevationProfile</h2>
+  <p class="why">Reason: the profile is the honest summary of effort ahead: where the climbs are, how high camp is. It is real route data, not decoration. "You are here" turns it into a progress bar.</p>
+  <div class="ctl"><button id="ep-adv">Advance 2 km</button><button id="ep-rst">Reset</button><button id="ep-pre">Planning view</button></div>
+  <div class="row">
+    <div class="stage" id="ep"></div>
+    <ul class="notes"><li><b>Data</b> in this sheet is a sample 12.4 km route.</li><li><b>Passed section</b> is bright; ahead is muted.</li><li><b>Axis labels</b> in km and m, 12 px minimum; label of current altitude is the one prominent number.</li></ul>
+  </div>
+</section>
+
+<!-- ============ Map style ============ -->
+<section class="sec">
+  <h2>Map layers</h2>
+  <p class="why">Reason: the map is only context. Contours stay nearly invisible (muted-line) so the route (cyan, 4 px), your breadcrumb (faint dots), friends (rings with initials) and you (orange dot with heading cone) read first. Unchosen branches are grey and turn warn when taken.</p>
+  <div class="ctl" id="map-ctl"></div>
+  <div class="row">
+    <div class="stage"><div class="mapbox" id="map"></div></div>
+    <ul class="notes"><li><b>Altitude caption</b> bottom-right: 3,214 m.</li><li><b>Friend rings</b>: solid ok = in range; dashed text-3 = out of range, hollow, with age.</li><li><b>GPS lost</b>: hollow position with growing uncertainty circle (not a stale solid dot).</li><li>Sunlight mode strengthens contours and doubles line widths.</li></ul>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const ic=(n,c)=>`<svg class="i ${c||''}"><use href="#i-${n}"/></svg>`;
+const hasVib=!!navigator.vibrate;
+function hap(el,txt,pat){ el.innerHTML='haptic: <b>'+txt+'</b>'+(hasVib?'':' (no vibrator on this device)'); if(hasVib&&pat) try{navigator.vibrate(pat)}catch(e){} }
+
+/* ---- toggles ---- */
+function tgl(id,cls,key){const b=$(id);b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);document.body.classList.toggle(cls,on);if(key)key(on)})}
+tgl('#t-sun','sun'); tgl('#t-glove','glove'); tgl('#t-reduce','reduce');
+tgl('#t-left','left',on=>{$('#dock').classList.toggle('left',on);renderQM()});
+tgl('#t-scale','x15',on=>{document.documentElement.style.fontSize=on?'24px':'';$$('.stage').forEach(s=>s.style.zoom=on?1:'');document.body.style.setProperty('--ts',on?1.5:1);document.querySelectorAll('.stage').forEach(s=>s.classList.toggle('ts15',on))});
+const sty=document.createElement('style');sty.textContent='.ts15 .body,.ts15 .label,.ts15 .caption,.ts15 .hero,.ts15 .title,.ts15 .sub,.ts15 .trip .num,.ts15 .gbar,.ts15 .lrow,.ts15 .chk li,.ts15 .rrow,.ts15 .hb .tx,.ts15 .tag,.ts15 .under,.ts15 .cap-q{font-size:1.5em}.ts15 .hero{font-size:36px}';document.head.appendChild(sty);
+
+/* ---- translation ---- */
+function translate(hi){ $$('.t').forEach(e=>{ if(!e.dataset.en) e.dataset.en=e.textContent; e.textContent=hi?e.dataset.hi:e.dataset.en; }); }
+const hi=()=>document.body.classList.contains('hi');
+const T=(en,h)=>hi()?h:en;
+
+/* ---- swatches ---- */
+const sw=[['bg','#000000','background'],['surface','#0E1114','glance zone, panels'],['raised','#171B1F','pressed / selected'],['hairline','#262C32','dividers'],['contour','#1A2026','map contours'],['text','#ECEFF1','primary text'],['text-2','#8A949E','labels'],['text-3','#5F6A74','disabled, off-range'],['signal','#FF6B1A','you, PTT, primary'],['nav','#5CC8E0','route, direction'],['ok','#4CD18A','on route, delivered'],['warn','#FFB020','off route, health'],['sos','#FF3B30','SOS / danger only'],['tint nav','#0B1A1F','HUD'],['tint warn','#1F1608','HUD'],['tint signal','#1F0F05','HUD'],['tint sos','#1F0706','HUD']];
+$('#swatches').innerHTML=sw.map(s=>`<div class="sw"><i style="background:${s[1]}"></i><div><b>${s[0]}</b>${s[1]}<br>${s[2]}</div></div>`).join('');
+
+/* ---- StatusTag ---- */
+const TAGS={ok:['ok','On route','रास्ते पर'],junction:['fork','Junction ahead','आगे मोड़'],off:['warn','Off route','रास्ते से हटे'],wrong:['uturn','Wrong way','गलत दिशा'],gps:['gps','GPS lost','GPS सिग्नल नहीं'],regroup:['radar','Regrouping','एकजुट हो रहे हैं'],sos:['sos','SOS','SOS']};
+const tag=k=>`<span class="tag" data-s="${k}">${ic(TAGS[k][0])}${T(TAGS[k][1],TAGS[k][2])}</span>`;
+function renderTags(){ $('#tags').innerHTML=Object.keys(TAGS).map(tag).join('') }
+
+/* ---- HUD ---- */
+
+
+const HUD={
+ ok:{h:['1.4 km','1.4 कि.मी.'],s:['to Kalipokhri · stay on ridge','कालीपोखरी तक · धार पर चलें'],a:0},
+ junction:{h:['Fork in 80 m','80 मी. पर दोराहा'],s:['keep left · path going uphill','बाएँ चलें · रास्ता ऊपर जा रहा है'],a:-35},
+ off:{h:['42 m off trail','रास्ते से 42 मी. दूर'],s:['turn back · trail is to your left','वापस मुड़ें · रास्ता बाईं ओर है'],a:-120},
+ wrong:{h:['Heading back to start','शुरुआत की ओर जा रहे हैं'],s:['turn around to continue','आगे जाने के लिए पलटें'],a:180},
+ gps:{h:['GPS signal weak','GPS सिग्नल कमज़ोर'],s:['last fix 2 min ago · keep to the trail','2 मिनट पहले की स्थिति · रास्ते पर रहें'],a:0},
+ regroup:{h:['Rahul · 210 m','राहुल · 210 मी.'],s:['last seen 3 min ago · downhill','3 मिनट पहले देखा · नीचे की ओर'],a:160}
+};
+let hudS='ok', hudAng=0, hudAngPrev=0, hudStationary=false;
+function shortest(cur,target){ let d=((target-cur)%360+540)%360-180; return cur+d }
+// Hero = distance to next checkpoint / decision point. Triplet = distance to today's destination (camp).
+function toastHTML(t){ return `<div class="toast ${t.out?'out':''}" role="status" aria-live="polite">${ic('send')}<span><b>${t.from}</b> ${T(t.en,t.hi)}</span></div>` }
+function hudHTML(st,o){ o=o||{}; const d=HUD[st];
+  const acc=st==='gps'?'±—':'±6 m';
+  return `<div class="hud" data-s="${st}">
+   <div class="hud-top"><span class="caption">GPS ${acc}</span>${tag(st)}<span class="caption" style="display:flex;gap:4px;align-items:center">${ic('bat')} 78%</span></div>
+   <div class="hud-main"><div class="dial" data-s="${st}"><svg class="i arrow" ${o.id?`id="${o.id}"`:''} style="transform:rotate(${o.ang||0}deg)"><use href="#i-arrow"/></svg></div>
+   <div class="hero-wrap"><div class="hero">${T(d.h[0],d.h[1])}</div><div class="sub">${T(d.s[0],d.s[1])}</div></div></div>
+   <div class="tripwrap"><div class="caption">${T('to camp','कैंप तक')}</div>
+   <div class="trip ${o.stationary?'paused':''}"><div><div class="num">6.2<small>${T('km','कि.मी.')}</small></div><div class="caption">${T('distance','दूरी')}</div></div>
+   <div><div class="num">320<small>${T('m','मी.')}</small></div><div class="caption">${T('climb','चढ़ाई')}</div></div>
+   <div><div class="num">2:10<small>${T('h','घं.')}</small></div><div class="caption">${T('time','समय')}</div></div></div></div>
+   ${o.stationary?`<div class="pausedline">${T('Paused · tracking resumes when you move','रुका हुआ · चलने पर ट्रैकिंग फिर शुरू होगी')}</div>`:''}
+   ${o.toast?toastHTML(o.toast):''}
+  </div>` }
+function renderHUD(){
+  $('#hud').innerHTML=hudHTML(hudS,{id:'arr1',ang:hudAngPrev,stationary:hudStationary});
+  const a=$('#arr1'); if(a){ a.getBoundingClientRect(); a.style.transform=`rotate(${hudAng}deg)`; } hudAngPrev=hudAng; }
+function setHud(s){ hudAngPrev=hudAng; hudAng=shortest(hudAng,HUD[s].a); hudS=s; renderHUD(); $$('#hud-ctl button[data-s]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===s)) }
+function mkCtl(el,items,fn,pressedFirst){ el.innerHTML=items.map((it,i)=>`<button data-s="${it[0]}" aria-pressed="${pressedFirst&&i===0}">${it[1]}</button>`).join(''); el.addEventListener('click',e=>{const b=e.target.closest('button');if(b)fn(b.dataset.s,b)}) }
+mkCtl($('#hud-ctl'),[['ok','On route'],['junction','Junction'],['off','Off route'],['wrong','Wrong way'],['gps','GPS lost'],['regroup','Regroup'],['_st','Stationary toggle']],(s,b)=>{
+  if(s==='_st'){hudStationary=!hudStationary;renderHUD();return}
+  setHud(s)},true);
+
+/* ---- Dial demo ---- */
+let ang2=20, ticks='';
+(function(){ let t=''; for(let i=0;i<360;i+=30){const m=i%90===0;const r1=m?44:48,r2=54;const x=a=>56+Math.sin(a*Math.PI/180)*r1,y=a=>56-Math.cos(a*Math.PI/180)*r1;t+=`<line x1="${56+Math.sin(i*Math.PI/180)*r2}" y1="${56-Math.cos(i*Math.PI/180)*r2}" x2="${x(i)}" y2="${y(i)}" stroke="currentColor" stroke-width="${m?2:1}" opacity="${m?.9:.4}"/>`} $('#dial2 .ticks').innerHTML=t })();
+function setDial(a,label){ ang2=shortest(ang2,a); $('#dial2 .arrow').style.transform=`rotate(${ang2}deg)`; $('#dial-c').textContent=label }
+mkCtl($('#dial-ctl'),[['20','Right 20°'],['-90','Left'],['170','Behind'],['350','350° (short turn)'],['10','10° (short turn)']],(s,b)=>{ const a=+s; setDial(a,a>180?T('bearing '+(360-a)+'° left','बाएँ '+(360-a)+'°'):a>90?T('behind you','आपके पीछे'):a<0?T('bearing '+(-a)+'° left','बाएँ '+(-a)+'°'):T('bearing '+a+'° right','दाएँ '+a+'°')) });
+setDial(20,'bearing 20° right');
+
+/* ---- GroupBar ---- */
+const GB={ok:['4 of 4 in range','4 में से 4 सीमा में','All together','सब साथ हैं','ok'],behind:['4 of 4 in range','4 में से 4 सीमा में','Rahul 60 m behind','राहुल 60 मी. पीछे','ok'],weak:['3 of 4 in range','4 में से 3 सीमा में','Rahul link weak','राहुल का सिग्नल कमज़ोर','warn'],out:['3 of 4 in range','4 में से 3 सीमा में','Rahul out of range','राहुल सीमा से बाहर','warn'],regroup:['Regrouping','एकजुट हो रहे हैं','Rahul · 210 m','राहुल · 210 मी.','regroup'],solo:['Solo','अकेले','No group paired','कोई समूह नहीं','ok']};
+let gbS='behind';
+function renderGB(){ const g=GB[gbS]; $('#gb').innerHTML=`<div style="height:90px"></div><div class="gbar" data-s="${g[4]}">${ic(gbS==='regroup'?'radar':'people')}<span class="main">${T(g[0],g[1])}</span><span class="fact">${T(g[2],g[3])}</span></div>` }
+mkCtl($('#gb-ctl'),[['ok','All together'],['behind','60 m behind'],['weak','Weak link'],['out','Out of range'],['regroup','Regroup'],['solo','Solo']],s=>{gbS=s;renderGB();$$('#gb-ctl button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===s))},false);
+
+/* ---- PTT ---- */
+const PTT={idle:()=>`<span class="in">${ic('mic','').replace('class="i "','class="i" style="width:28px;height:28px"')}<span>${T('Hold to talk','बोलने के लिए दबाए रखें')}</span></span>`,
+ talking:()=>`<span class="in"><span class="wave live"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>${T('Talking','बोल रहे हैं')}</span></span>`,
+ receiving:()=>`<span class="in"><span class="wave live" style="color:var(--nav)"><i></i><i></i><i></i><i></i><i></i></span><span class="title" style="font-size:18px">Rahul</span></span>`,
+ busy:()=>`<span class="in">${ic('mic').replace('class="i "','class="i" style="width:24px;height:24px"')}<span style="font-size:13px">${T('Rahul is talking','राहुल बोल रहे हैं')}</span></span>`};
+let pttS='idle';
+function renderPTT(){ const p=$('#ptt'); p.dataset.s=pttS; p.innerHTML=PTT[pttS](); $$('#ptt-ctl button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===pttS)) }
+mkCtl($('#ptt-ctl'),[['idle','Idle'],['talking','Talking'],['receiving','Receiving'],['busy','Channel busy']],s=>{pttS=s;renderPTT()},false);
+const p=$('#ptt'); let prevS='idle';
+p.addEventListener('pointerdown',e=>{ if(pttS==='busy'){ hap($('#hlog'),'channel-busy low beep · 1 short'); return } prevS=pttS; pttS='talking'; p.classList.add('down'); renderPTT(); hap($('#hlog'),'tap tick 10 ms · roger beep (start)',10); p.setPointerCapture(e.pointerId)});
+['pointerup','pointercancel'].forEach(ev=>p.addEventListener(ev,()=>{ if(pttS==='talking'){ pttS='idle'; p.classList.remove('down'); renderPTT(); hap($('#hlog'),'roger beep (end) · 1 short',30)} }));
+
+/* ---- HoldButton ---- */
+$$('.hold').forEach(h=>{
+  const secs=+h.dataset.secs;
+  const prog=h.querySelector('.prog'), fill=h.querySelector('.fill');
+  const C=100; if(prog){prog.style.strokeDasharray=C;prog.style.strokeDashoffset=C}
+  let raf=0,t0=0,lastTick=0,done=false,active=false;
+  const set=f=>{ if(prog)prog.style.strokeDashoffset=C*(1-f); if(fill)fill.style.transform=`scaleX(${f})` };
+  const log=h.id==='h-sos'?$('#hlog'):$('#hlog2');
+  function step(now){ const f=Math.min(1,(now-t0)/(secs*1000)); set(f); const sc=Math.floor((now-t0)/1000); if(sc>lastTick){lastTick=sc;hap(log,'tick '+sc+' of '+secs,10)} if(f>=1){done=true;active=false;h.classList.add('done');hap(log,'strong pulse · complete',[0,200]);return} raf=requestAnimationFrame(step)}
+  function start(){ if(done||active)return; active=true; h.classList.remove('release'); t0=performance.now();lastTick=0; hap(log,'tap tick 10 ms',10); raf=requestAnimationFrame(step) }
+  function stop(){ if(!active)return; active=false; cancelAnimationFrame(raf); h.classList.add('release'); set(0); hap(log,'released early · springs back') }
+  h.addEventListener('pointerdown',e=>{ h.setPointerCapture(e.pointerId); start() });
+  ['pointerup','pointercancel'].forEach(ev=>h.addEventListener(ev,stop));
+  h.addEventListener('keydown',e=>{ if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();start()} });
+  h.addEventListener('keyup',e=>{ if(e.key===' '||e.key==='Enter')stop() });
+  h.addEventListener('contextmenu',e=>e.preventDefault());
+  h._reset=()=>{done=false;active=false;h.classList.remove('done','release');set(0)};
+});
+$('#hold-reset').addEventListener('click',()=>$$('.hold').forEach(h=>h._reset()));
+
+/* ---- QuickMessageArc ---- */
+const QM=[['Wait','रुकें'],['Break','आराम'],['Take left fork','बाएँ वाला रास्ता लें'],['All OK','सब ठीक']];
+let qmOpen=false;
+function renderQM(){
+  const q=$('#qm'); q.classList.toggle('open',qmOpen); q.querySelectorAll('.tgt').forEach(n=>n.remove());
+  const left=document.body.classList.contains('left');
+  // arc centred above the PTT corner; targets at radius 150 sweeping 0..90° away from the screen edge
+  const k=document.body.classList.contains('glove')?1.25:1; const R=160*k, cx=left?(18+52*k):(360-18-52*k), cy=270*k-18-52*k;
+  QM.forEach((m,i)=>{ const rad=(8+i*28)*Math.PI/180; const ax=cx+(left?1:-1)*Math.sin(rad)*R, ay=cy-Math.cos(rad)*R;
+    const b=document.createElement('button'); b.className='tgt'; b.style.left=(ax-36*k)+'px'; b.style.top=(ay-36*k)+'px'; b.style.transitionDelay=(i*30)+'ms'; b.textContent=T(m[0],m[1]); b.setAttribute('aria-label',m[0]);
+    b.addEventListener('click',()=>{ b.classList.add('pick'); $('#qm-out').innerHTML=ic('check')+' '+T('Sent to 3 friends: '+m[0],'3 साथियों को भेजा: '+m[1]); hap($('#qm-out'),'1 short'); setTimeout(()=>{qmOpen=false;renderQM()},500)});
+    q.appendChild(b) });
+}
+mkCtl($('#qm-ctl'),[['open','Open arc'],['close','Close arc']],s=>{qmOpen=s==='open';$('#qm-out').innerHTML='&nbsp;';renderQM()},false);
+const pq=$('#ptt2'); pq.innerHTML=PTT.idle();
+let sy=null; pq.addEventListener('pointerdown',e=>{sy=e.clientY});
+pq.addEventListener('pointerup',e=>{ if(sy!==null&&sy-e.clientY>40){qmOpen=true;renderQM()} sy=null});
+$('#qm .cap-q').addEventListener('click',()=>{qmOpen=!qmOpen;renderQM()});
+
+/* ---- Countdown ---- */
+(function(){
+ const C=2*Math.PI*44, p=$('#cd-p'); p.style.strokeDasharray=C; let left=60,timer=null;
+ function draw(){ $('#cd-n').textContent=Math.ceil(left); p.style.strokeDashoffset=C*(1-left/60) }
+ function run(){ clearInterval(timer); let last=performance.now(); timer=setInterval(()=>{ if(document.hidden){last=performance.now();return} const n=performance.now(); left=Math.max(0,left-(n-last)/1000); last=n; draw(); if(left<=0)clearInterval(timer)},50) }
+ $('#cd-run').addEventListener('click',()=>{left=60;draw();run()});
+ $('#cd-fast').addEventListener('click',()=>{left=8;draw();run()});
+ draw();
+})();
+
+/* ---- Checklist ---- */
+const CHK={
+ lost:{big:['Stay where you are','अपनी जगह पर रुकें'],sub:['Your group is coming to your last position','आपका समूह आपकी आखिरी जगह की ओर आ रहा है'],rows:[['radar','Beacon broadcasting','बीकन प्रसारित हो रहा है','live','on','चालू'],['sos','SOS SMS armed, sends at first signal','SOS SMS तैयार, सिग्नल मिलते ही जाएगा','wait','armed','तैयार'],['people','Group alerted','समूह को सूचित किया','done','3 received','3 को मिला']]},
+ sos0:{big:['SOS active','SOS चालू'],sub:['SMS will send at first signal · beacon on','पहला सिग्नल मिलते ही SMS जाएगा · बीकन चालू'],rows:[['send','SMS to 3 contacts','3 संपर्कों को SMS','wait','queued','कतार में'],['radar','Beacon','बीकन','live','broadcasting','प्रसारित हो रहा है'],['people','Group alerted','समूह को सूचित किया','wait','sending','भेज रहे हैं'],['siren','Siren','सायरन','off','off','बंद'],['torch','Torch','टॉर्च','off','off','बंद']]},
+ sos1:{big:['SOS delivered to 2 of 3','3 में से 2 को SOS पहुँचा'],sub:['1 contact still queued · beacon on','1 संपर्क कतार में · बीकन चालू'],rows:[['send','SMS to 3 contacts','3 संपर्कों को SMS','wait','delivered to 2 of 3','3 में से 2 को पहुँचा'],['radar','Beacon','बीकन','live','broadcasting','प्रसारित हो रहा है'],['people','Group alerted','समूह को सूचित किया','done','3 received','3 को मिला'],['siren','Siren','सायरन','off','off','बंद'],['torch','Torch','टॉर्च','off','off','बंद']]},
+ sos2:{big:['SOS delivered','SOS पहुँच गया'],sub:['3 of 3 contacts received it · beacon on','3 में से 3 संपर्कों को मिला · बीकन चालू'],rows:[['send','SMS to 3 contacts','3 संपर्कों को SMS','done','delivered to 3 of 3','3 में से 3 को पहुँचा'],['radar','Beacon','बीकन','live','broadcasting','प्रसारित हो रहा है'],['people','Group alerted','समूह को सूचित किया','done','3 received','3 को मिला'],['siren','Siren','सायरन','off','off','बंद'],['torch','Torch','टॉर्च','off','off','बंद']]}
+};
+let chkS='lost';
+function renderChk(){ const c=CHK[chkS]; $('#chk-stage').innerHTML=`<div class="big"><div class="display">${T(c.big[0],c.big[1])}</div><div class="sub">${T(c.sub[0],c.sub[1])}</div></div><ul class="chk">${c.rows.map(r=>`<li>${r[3]==='live'?'<span class="pulse live"></span>':ic(r[0])}<span>${T(r[1],r[2])}</span><span class="st" data-s="${r[3]}">${T(r[4],r[5])}</span></li>`).join('')}</ul>` }
+mkCtl($('#chk-ctl'),[['lost','Lost mode'],['sos0','SOS: nothing delivered'],['sos1','SOS: 2 of 3'],['sos2','SOS: all delivered']],s=>{chkS=s;renderChk();$$('#chk-ctl button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===s))},true);
+
+/* ---- PinTypeGrid ---- */
+const PINS=[['drop','Water','पानी','water'],['warn','Danger','खतरा','danger'],['home','Homestay','होमस्टे','home'],['sig','Signal here','यहाँ सिग्नल','sig'],['eye','Viewpoint','दृश्य-स्थल','view'],['plus','Custom','अपना','custom']];
+function renderPins(){ $('#pgrid').innerHTML=PINS.map(p=>`<button data-t="${p[3]}" aria-label="${p[1]}">${ic(p[0])}<span>${T(p[1],p[2])}</span></button>`).join('') }
+$('#pgrid').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$$('#pgrid button').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');$('#pg-out').innerHTML=ic('check')+' '+T('Saved at 3,214 m · 09:41 GPS time','3,214 मी. पर सहेजा · 09:41 GPS समय');hap($('#pg-out'),'1 short',30)});
+
+/* ---- ReadinessRow ---- */
+let rr={maps:true,wx:false,voice:true,permit:true,group:false};
+function renderRR(){ const rows=[['maps','Maps downloaded','नक्शे डाउनलोड','All 3 regions · 412 MB','सभी 3 क्षेत्र · 412 MB','Download','डाउनलोड'],['wx','Weather saved','मौसम सहेजा','Saved 5 h ago · refresh when online','5 घंटे पहले सहेजा · नेट मिलने पर नया करें','Refresh','नया करें'],['voice','Voice alerts ready','आवाज़ चेतावनी तैयार','English and Hindi voices installed','अंग्रेज़ी और हिन्दी आवाज़ें मौजूद','Test','जाँचें'],['permit','Permits noted','परमिट दर्ज','Sandakphu forest permit','संदकफू वन परमिट','Add','जोड़ें'],['group','Group ready','समूह तैयार','3 of 4 ready · Mohan has no map','4 में से 3 तैयार · मोहन के पास नक्शा नहीं','Ask','पूछें']];
+ $('#rr').innerHTML=rows.map(r=>{const ok=rr[r[0]];return `<div class="rrow" data-s="${ok?'ok':(r[0]==='group'?'bad':'warn')}">${ic(ok?'ok':(r[0]==='group'?'sos':'warn'),'s')}<div class="m"><div class="a">${T(r[1],r[2])}</div><div class="b">${ok?T(r[3],r[4]).replace(/ · refresh.*|· नेट.*/,''):T(r[3],r[4])}</div></div>${ok?'':`<button class="fix" data-k="${r[0]}">${T(r[5],r[6])}</button>`}</div>`}).join('') }
+$('#rr').addEventListener('click',e=>{const b=e.target.closest('.fix');if(b){rr[b.dataset.k]=true;renderRR()}});
+
+/* ---- HealthBanner ---- */
+let hbS='ams'; let hbDis=false;
+function renderHB(){ const d={ams:['Climbing fast','Ascent 620 m today · watch for headache','तेज़ चढ़ाई','आज 620 मी. चढ़े · सिरदर्द पर ध्यान दें'],storm:['Pressure dropping fast','Weather may turn · be ready to descend','दबाव तेज़ी से गिर रहा है','मौसम बदल सकता है · उतरने को तैयार रहें']}[hbS];
+ $('#hb-stage').innerHTML=hbDis?`<div class="under" style="padding:18px">${T('Dismissed. Reappears if conditions worsen.','हटाया गया। हालत बिगड़ने पर फिर दिखेगा।')}</div>`:`<div class="hb" role="button" tabindex="0">${ic(hbS==='ams'?'warn':'warn','l')}<div class="tx">${T(d[0],d[2])}<small>${T(d[1],d[3])}</small></div><button class="x" aria-label="Dismiss">${ic('x')}</button></div>`;
+ const x=$('#hb-stage .x'); if(x)x.addEventListener('click',e=>{e.stopPropagation();hbDis=true;renderHB()}) }
+mkCtl($('#hb-ctl'),[['ams','Altitude'],['storm','Storm'],['_r','Show again']],(s,b)=>{ if(s==='_r'){hbDis=false}else{hbS=s;hbDis=false} renderHB(); $$('#hb-ctl button[data-s="ams"],#hb-ctl button[data-s="storm"]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.s===hbS)) },true);
+
+/* ---- ElevationProfile ---- */
+const PROF=[[0,2100],[1,2180],[2,2340],[3,2310],[4,2520],[5,2710],[6,2680],[7,2890],[8,3010],[9,3214],[10,3120],[11,3040],[12.4,2980]];
+let epKm=3.8, epPlan=false;
+function renderEP(){
+ const W=324,H=112,pad=6, xs=km=>pad+km/12.4*(W-pad*2), mn=2000,mx=3300, ys=m=>H-18-(m-mn)/(mx-mn)*(H-30);
+ const pts=PROF.map(p=>[xs(p[0]),ys(p[1])]);
+ const path=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+ const cx=xs(epKm); const alt=altAt(epKm), cy=ys(alt);
+ const area=path+` L${xs(12.4)},${H-18} L${xs(0)},${H-18} Z`;
+ const ticks=[0,3,6,9,12].map(k=>`<line x1="${xs(k)}" x2="${xs(k)}" y1="${H-18}" y2="${H-14}" stroke="var(--text3)"/><text class="ax" x="${xs(k)}" y="${H-3}" text-anchor="middle">${k} km</text>`).join('');
+ $('#ep').innerHTML=`<div class="ep"><div class="ep-top"><div><span class="num">${epPlan?'12.4':(12.4-epKm).toFixed(1)}</span> <span class="label">${epPlan?T('km · 1,090 m climb','कि.मी. · 1,090 मी. चढ़ाई'):T('km left','कि.मी. बाकी')}</span></div><div class="label">${epPlan?T('camp 2,980 m','कैंप 2,980 मी.'):Math.round(alt).toLocaleString()+' m'}</div></div>
+ <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Elevation profile"><defs><clipPath id="cp"><rect x="0" y="0" width="${epPlan?0:cx}" height="${H}"/></clipPath></defs>
+ <path d="${area}" fill="var(--contour)"/><path d="${path}" fill="none" stroke="var(--text3)" stroke-width="2"/>
+ ${epPlan?`<path d="${path}" fill="none" stroke="var(--nav)" stroke-width="3"/>`:`<path d="${area}" fill="var(--tint-nav)" clip-path="url(#cp)"/><path d="${path}" fill="none" stroke="var(--nav)" stroke-width="3" clip-path="url(#cp)"/>`}
+ ${epPlan?'':`<line x1="${cx}" x2="${cx}" y1="${cy}" y2="${H-18}" stroke="var(--signal)" stroke-dasharray="2 3"/><circle cx="${cx}" cy="${cy}" r="5" fill="var(--signal)"/><text class="ax" x="${Math.min(cx+8,W-46)}" y="${cy-8}" fill="var(--signal)" style="fill:var(--signal)">${T('you','आप')}</text>`}
+ ${ticks}</svg></div>`; }
+function altAt(km){ for(let i=1;i<PROF.length;i++){ if(km<=PROF[i][0]){const a=PROF[i-1],b=PROF[i];return a[1]+(b[1]-a[1])*(km-a[0])/(b[0]-a[0])}} return PROF[PROF.length-1][1] }
+$('#ep-adv').addEventListener('click',()=>{epPlan=false;epKm=Math.min(12.4,epKm+2);renderEP()});
+$('#ep-rst').addEventListener('click',()=>{epPlan=false;epKm=3.8;renderEP()});
+$('#ep-pre').addEventListener('click',()=>{epPlan=true;renderEP()});
+
+/* ---- Map ---- */
+let mapS='route';
+function renderMap(){
+ const g=mapS==='gps';
+ const contours=[0,1,2,3,4,5].map(i=>`<path d="M-10 ${30+i*34} C 60 ${10+i*34}, 120 ${60+i*28}, 190 ${34+i*34} S 320 ${20+i*34}, 380 ${50+i*30}" fill="none" stroke="var(--contour)" stroke-width="1.5"/>`).join('');
+ const route='M40 190 C 80 170, 110 150, 150 130 S 220 100, 250 70';
+ const branch=mapS==='off'?`<path d="M150 130 C 175 150, 200 175, 230 195" fill="none" stroke="var(--warn)" stroke-width="3" stroke-dasharray="1 7" stroke-linecap="round"/>`:`<path d="M150 130 C 175 150, 200 175, 230 195" fill="none" stroke="var(--text3)" stroke-width="3"/>`;
+ const me=mapS==='off'?[205,172]:[118,152];
+ const cone=g?'':`<path d="M${me[0]} ${me[1]} l-16 -30 a34 34 0 0 1 32 0 z" fill="var(--signal)" opacity=".25" transform="rotate(${mapS==='off'?150:40} ${me[0]} ${me[1]})"/>`;
+ const meDot=g?`<circle cx="${me[0]}" cy="${me[1]}" r="34" fill="none" stroke="var(--signal)" stroke-dasharray="3 4"/><circle cx="${me[0]}" cy="${me[1]}" r="8" fill="none" stroke="var(--signal)" stroke-width="3"/>`:`<circle cx="${me[0]}" cy="${me[1]}" r="9" fill="var(--signal)" stroke="#000" stroke-width="2"/>`;
+ const crumbs=mapS==='off'?`<path d="M40 190 C 80 170, 110 150, 150 130 C 175 150, 200 165, 205 172" fill="none" stroke="var(--text2)" stroke-opacity=".6" stroke-width="3" stroke-dasharray="1 6" stroke-linecap="round"/>`:`<path d="M40 190 C 80 175, 100 160, 118 152" fill="none" stroke="var(--text2)" stroke-opacity=".6" stroke-width="3" stroke-dasharray="1 6" stroke-linecap="round"/>`;
+ const fr=(x,y,t,out)=>`<g><circle cx="${x}" cy="${y}" r="13" fill="#000" stroke="${out?'var(--text3)':'var(--ok)'}" stroke-width="2.5" ${out?'stroke-dasharray="3 3"':''}/><text x="${x}" y="${y+4}" text-anchor="middle" font-size="11" fill="var(--text)" font-family="Barlow,sans-serif" font-weight="500">${t}</text></g>`;
+ $('#map').innerHTML=`<svg viewBox="0 0 360 210" preserveAspectRatio="xMidYMid slice">${contours}${branch}<path d="${route}" fill="none" stroke="var(--nav)" stroke-width="4" stroke-linecap="round"/>${crumbs}
+ <circle cx="150" cy="130" r="7" fill="#000" stroke="${mapS==='junction'?'var(--nav)':'var(--text2)'}" stroke-width="${mapS==='junction'?4:2}"/>${mapS==='junction'?'<circle cx="150" cy="130" r="14" fill="none" stroke="var(--nav)" stroke-width="1.5"/>':''}
+ ${cone}${meDot}${fr(92,166,'RK',false)}${fr(255,56,'AS',false)}${fr(300,150,'MD',true)}
+ <text x="352" y="202" text-anchor="end" font-size="12" fill="var(--text2)" font-family="Barlow,sans-serif">3,214 m</text></svg>`;
+}
+mkCtl($('#map-ctl'),[['route','On route'],['junction','Junction'],['off','Branch taken'],['gps','GPS lost']],s=>{mapS=s;renderMap();$$('#map-ctl button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===s))},true);
+
+/* ---- LargeToggle ---- */
+$$('.ltog').forEach(t=>{
+  const flip=()=>{ const on=t.getAttribute('aria-pressed')!=='true'; t.setAttribute('aria-pressed',on); renderLT(t); hap($('#hlog3'),'1 short ('+t.dataset.k+(on?' on':' off')+')',30) };
+  t.addEventListener('click',flip);
+  t.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();flip()} });
+});
+function renderLT(t){ const on=t.getAttribute('aria-pressed')==='true'; const k=t.dataset.k;
+  const n=k==='torch'?T('Torch strobe','टॉर्च स्ट्रोब'):T('Siren','सायरन');
+  t.innerHTML=ic(k)+`<span><span class="lt-n">${n}</span><br><span class="lt-s">${on?T('On','चालू'):T('Off','बंद')}</span></span>`; }
+
+/* ---- SnoozeButton ---- */
+let snzEnd=0, snzTimer=null;
+function renderSnooze(){ const b=$('#snooze'); const left=Math.max(0,Math.ceil((snzEnd-Date.now())/1000));
+  if(snzEnd&&left>0){ b.dataset.s='on'; b.setAttribute('aria-label','Alerts snoozed, tap to resume');
+    b.innerHTML=ic('clock')+`<span>${T('Snoozed','बंद किया')} ${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}<br><small>${T('Tap to resume alerts','अलर्ट फिर चालू करने के लिए दबाएँ')}</small></span>`; }
+  else { snzEnd=0; clearInterval(snzTimer); b.dataset.s='off'; b.setAttribute('aria-label','I know, exploring. Snooze off-route alerts for 10 minutes');
+    b.innerHTML=ic('eye')+`<span>${T('I know, exploring','पता है, खोज रहे हैं')}<br><small>${T('Silences off-route alerts for 10 min','10 मिनट के लिए रास्ते से हटने की चेतावनी बंद')}</small></span>`; } }
+function snzToggle(){ if(snzEnd){snzEnd=0;hap($('#hlog4'),'1 short · alerts resume',30)}else{snzEnd=Date.now()+600000;clearInterval(snzTimer);snzTimer=setInterval(()=>{ if(!document.hidden)renderSnooze() },1000);hap($('#hlog4'),'tap tick 10 ms · off-route haptic stops',10)} renderSnooze() }
+$('#snooze').addEventListener('click',snzToggle);
+$('#snooze').addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();snzToggle()} });
+
+/* ---- ThumbBack ---- */
+$('#tb').addEventListener('click',()=>hap($('#hlog6'),'tap tick 10 ms · screen closes'));
+$('#tb').addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();$('#tb').click()} });
+
+/* ---- Toast ---- */
+let toastCur=null, toastTimer=null;
+const TOASTS={wait:['Wait','रुकें'],fork:['Take left fork','बाएँ वाला रास्ता लें']};
+function renderToast(){ $('#toast-stage').innerHTML=hudHTML('ok',{toast:toastCur}) }
+function showToast(k){ clearTimeout(toastTimer); const m=TOASTS[k]; toastCur={from:'Rahul',en:m[0],hi:m[1]}; renderToast();
+  hap($('#hlog5'),'1 short · chime, then voice: “Rahul says: '+m[0]+'”',30);
+  toastTimer=setTimeout(()=>{ toastCur.out=true; renderToast(); setTimeout(()=>{toastCur=null;renderToast()},220) },6000) }
+mkCtl($('#toast-ctl'),[['wait','Rahul: Wait'],['fork','Rahul: Take left fork']],s=>showToast(s),false);
+
+function renderAll(){ renderTags(); renderHUD(); renderGB(); renderPTT(); renderQM(); renderChk(); renderPins(); renderRR(); renderHB(); renderEP(); renderMap();
+  $$('.ltog').forEach(renderLT); renderSnooze(); renderToast(); $('#ptt2').innerHTML=PTT.idle(); }
+renderAll();
+$('#t-glove').addEventListener('click',()=>{renderQM()});
+})();
+</script>
+</body>
+</html>

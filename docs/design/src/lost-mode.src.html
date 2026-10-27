@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagdandi lost mode</title>
+<style>{{CSS}}</style>
+</head>
+<body>
+{{SPRITE}}
+{{BAR}}
+<div class="layout">
+<div class="phone" id="phone" aria-label="Lost mode screen"></div>
+<aside class="side">
+  <div class="grp"><h2>State</h2><div class="ctl" id="c-state"></div></div>
+  <div class="grp"><h2>Reality (the screen must stay honest)</h2><div class="ctl" id="c-real"></div></div>
+  <div class="grp"><h2>What the phone does now</h2>
+    <div class="vbox" id="hlog">haptic: <b>none</b></div>
+    <div class="vbox" id="vlog">voice: <b>none</b></div></div>
+  <div class="grp"><h2>Try</h2><ul class="notes" style="width:auto">
+    <li>Tap "I need to move", pick a reason, then follow the backtrack.</li>
+    <li>Hold "I'm found" for 3 s.</li>
+    <li>Switch "Group reached" to see the checklist change from "when in range" to "received".</li></ul></div>
+  <div class="grp"><h2>Notes</h2><p class="label">Reasons, states, copy, haptics: <b>lost-mode.md</b>.</p></div>
+</aside>
+</div>
+<script>{{BASE_JS}}</script>
+<script>
+(function(){
+'use strict';
+const {$,$$,T,ic,tag,hap,say,mkCtl}=P;
+let st='lost', reason=null, reached=false, signalSms=false, ang=-40, tgl={torch:false,siren:false};
+const REASONS={cold:['Cold','ठंड'],danger:['Danger here','यहाँ खतरा'],dark:['Getting dark','अंधेरा हो रहा है']};
+
+function rows(){
+  const grp=reached?['done',T('3 received','3 को मिला')]:['wait',T('when in range','सीमा में आते ही')];
+  const sms=['wait',T('armed','तैयार')];
+  const r=[['live',T('Beacon broadcasting','बीकन प्रसारित हो रहा है'),T('on','चालू'),'radar'],
+    ['wait',T('SOS SMS armed, sends at first signal','SOS SMS तैयार, सिग्नल मिलते ही जाएगा'),sms[1],'sos'],
+    [grp[0],reached?T('Group alerted','समूह को सूचित किया'):T('Group will be alerted','समूह को सूचित किया जाएगा'),grp[1],'people']];
+  return `<ul class="chk">${r.map(x=>`<li>${x[0]==='live'?'<span class="pulse live"></span>':ic(x[3])}<span>${x[1]}</span><span class="st" data-s="${x[0]}">${x[2]}</span></li>`).join('')}</ul>`;
+}
+function render(){
+  const ph=$('#phone'); let h='';
+  const top=`<div class="zone-glance" data-s="lost"><div class="hud-top" style="margin-bottom:0"><span class="caption">GPS ±12 m</span>${tag('lost')}<span class="caption" style="display:flex;gap:4px;align-items:center">${ic('bat')} 64%</span></div></div>`;
+  if(st==='lost'||st==='prompt'){
+    h=top+`<div class="scroll">
+      <div class="big"><div class="display">${T('Stay where you are','अपनी जगह पर रुकें')}</div><div class="sub">${T('Your group is coming to your last position','आपका समूह आपकी आखिरी जगह की ओर आ रहा है')}</div></div>
+      <div class="big-row" style="margin:6px 0 14px">${P.dialHTML('lost',{big:true,ang:ang})}<div><div class="num" style="font-size:44px;line-height:1">320<small style="font-size:18px;color:var(--text2)"> ${T('m','मी.')}</small></div><div class="label" style="margin-top:6px">${T('group’s last position','समूह की आखिरी जगह')}<br>${T('seen 4 min ago · downhill','4 मिनट पहले देखा · नीचे की ओर')}</div></div></div>
+      ${rows()}</div>
+      <div class="zone-thumb"><div class="ltrow">${P.ltogHTML('torch',tgl.torch)}${P.ltogHTML('siren',tgl.siren)}</div>
+      <button class="btn" id="move">${ic('walk')}${T('I need to move','मुझे चलना होगा')}</button>
+      ${P.holdWide(T('I’m found · hold 3 s','मिल गया · 3 सेकंड दबाए रखें'),3,'var(--ok)',"I'm found, hold 3 seconds",'ok')}</div>`;
+    if(st==='prompt') h+=`<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Why do you need to move?"><h3>${T('Why do you need to move?','आपको क्यों चलना है?')}</h3>
+      ${Object.keys(REASONS).map(k=>`<button class="opt" data-r="${k}">${ic(k==='cold'?'cold':k==='danger'?'warn':'moon')}${T(REASONS[k][0],REASONS[k][1])}</button>`).join('')}
+      <button class="btn" id="stay">${ic('stay')}${T('Stay here','यहीं रुकें')}</button></div>`;
+  } else if(st==='back'){
+    h=top+`<div class="scroll">
+      <div class="big"><div class="display" style="font-size:40px">${T('Walk back slowly','धीरे-धीरे वापस चलें')}</div><div class="sub">${T('Follow your breadcrumb · stop if the ground looks unsafe','अपने निशान पर चलें · ज़मीन असुरक्षित लगे तो रुकें')}</div></div>
+      <div class="big-row" style="margin:6px 0 14px">${P.dialHTML('lost',{big:true,ang:150})}<div><div class="num" style="font-size:44px;line-height:1">260<small style="font-size:18px;color:var(--text2)"> ${T('m','मी.')}</small></div><div class="label" style="margin-top:6px">${T('to where your group last saw you','जहाँ समूह ने आपको आखिरी बार देखा')}<br>${T('reason sent: ','कारण भेजा: ')}${T(REASONS[reason||'cold'][0],REASONS[reason||'cold'][1])}</div></div></div>
+      ${rows()}</div>
+      <div class="zone-thumb"><button class="btn" id="stay2">${ic('stay')}${T('Stay here instead','यहीं रुकें')}</button>
+      ${P.holdWide(T('I’m found · hold 3 s','मिल गया · 3 सेकंड दबाए रखें'),3,'var(--ok)',"I'm found, hold 3 seconds",'ok')}</div>`;
+  } else {
+    h=`<div class="zone-glance" data-s="ok"><div class="hud-top" style="margin-bottom:0"><span class="caption">GPS ±6 m</span><span class="tag" data-s="ok">${ic('ok')}${T('Found','मिल गए')}</span><span class="caption" style="display:flex;gap:4px;align-items:center">${ic('bat')} 64%</span></div></div>
+      <div class="scroll"><div class="big"><div class="display">${T('Marked as found','मिल गए, दर्ज किया')}</div><div class="sub">${T('Beacon off · SOS SMS disarmed','बीकन बंद · SOS SMS बंद')}</div></div>
+      <ul class="chk"><li>${ic('radar')}<span>${T('Beacon','बीकन')}</span><span class="st" data-s="off">${T('off','बंद')}</span></li>
+      <li>${ic('sos')}<span>${T('SOS SMS','SOS SMS')}</span><span class="st" data-s="off">${T('disarmed','बंद')}</span></li>
+      <li>${ic('people')}<span>${T('Group told you are found','समूह को बताया: आप मिल गए')}</span><span class="st" data-s="${reached?'done':'wait'}">${reached?T('received','मिला'):T('sends when in range','सीमा में आते ही')}</span></li></ul></div>
+      <div class="zone-thumb"><a class="btn primary" href="active-trek.html" style="text-decoration:none">${ic('back')}${T('Back to trek','ट्रैक पर वापस')}</a></div>`;
+  }
+  ph.innerHTML=h; wire(); P.apply();
+}
+function wire(){
+  $$('.ltog').forEach(t=>P.wireLT(t,(k,on)=>{tgl[k]=on}));
+  $$('.hold').forEach(x=>P.wireHold(x,()=>{ setTimeout(()=>{ st='found'; render(); hap('one strong pulse · found recorded'); $('#vlog').innerHTML='voice: <b>none</b>'; $$('#c-state button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s==='found')) },350) }));
+  const mv=$('#move'); if(mv)P.press(mv,()=>{ st='prompt'; render(); hap('tap tick 10 ms · reason prompt opens',10); $$('#c-state button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s==='prompt')) });
+  $$('.opt').forEach(o=>o.addEventListener('click',()=>{ reason=o.dataset.r; st='back'; render(); hap('1 short · reason “'+REASONS[reason][0]+'” sent to group',30); $$('#c-state button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s==='back')) }));
+  [$('#stay'),$('#stay2')].forEach(b=>{ if(b)P.press(b,()=>{ st='lost'; render(); hap('tap tick 10 ms',10); $$('#c-state button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.s==='lost')) }) });
+}
+mkCtl($('#c-state'),[['lost','Lost'],['prompt','Reason prompt'],['back','Backtrack'],['found','Found']],s=>{ st=s; if(s==='back'&&!reason)reason='cold'; render();
+  if(s==='lost'){ hap('2 long (friend lost: on the others’ phones). This phone: SOS armed, no repeating buzz',[400,200,400]); say('Stay where you are. Your group is coming to your last position.','अपनी जगह पर रुकें। आपका समूह आपकी आखिरी जगह की ओर आ रहा है।') } },true);
+mkCtl($('#c-real'),[['_g','Group reached: toggle']],()=>{ reached=!reached; render() });
+P.listeners.push(render);
+render();
+say('Stay where you are. Your group is coming to your last position.','अपनी जगह पर रुकें। आपका समूह आपकी आखिरी जगह की ओर आ रहा है।');
+})();
+</script>
+</body>
+</html>

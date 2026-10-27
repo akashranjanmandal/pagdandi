@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagdandi SOS active</title>
+<style>{{CSS}}</style>
+</head>
+<body>
+{{SPRITE}}
+{{BAR}}
+<div class="layout">
+<div class="phone" id="phone" aria-label="SOS active screen"></div>
+<aside class="side">
+  <div class="grp"><h2>Delivery (the big text only says what is true)</h2><div class="ctl" id="c-del"></div></div>
+  <div class="grp"><h2>Reality</h2><div class="ctl" id="c-real"></div></div>
+  <div class="grp"><h2>What the phone does now</h2>
+    <div class="vbox" id="hlog">haptic: <b>none</b></div>
+    <div class="vbox" id="vlog">voice: <b>none</b></div></div>
+  <div class="grp"><h2>Try</h2><ul class="notes" style="width:auto">
+    <li>Switch delivery states: the headline changes with the truth.</li>
+    <li>Switch Signal off: Call 112 becomes disabled and says why.</li>
+    <li>Hold "Cancel SOS" for 5 s.</li></ul></div>
+  <div class="grp"><h2>Notes</h2><p class="label">Reasons, states, copy, haptics: <b>sos-active.md</b>.</p></div>
+</aside>
+</div>
+<script>{{BASE_JS}}</script>
+<script>
+(function(){
+'use strict';
+const {$,$$,T,ic,tag,hap,say,mkCtl}=P;
+let del='d0', signal=false, tgl={torch:false,siren:false}, cancelled=false;
+const D={
+ d0:{big:['SOS active','SOS चालू'],sub:['SMS will send at first signal · beacon on','पहला सिग्नल मिलते ही SMS जाएगा · बीकन चालू'],sms:['wait','queued','कतार में'],grp:['wait','sending','भेज रहे हैं']},
+ d1:{big:['SOS delivered to 2 of 3','3 में से 2 को SOS पहुँचा'],sub:['1 contact still queued · beacon on','1 संपर्क कतार में · बीकन चालू'],sms:['wait','delivered to 2 of 3','3 में से 2 को पहुँचा'],grp:['done','3 received','3 को मिला']},
+ d2:{big:['SOS delivered','SOS पहुँच गया'],sub:['3 of 3 contacts received it · beacon on','3 में से 3 संपर्कों को मिला · बीकन चालू'],sms:['done','delivered to 3 of 3','3 में से 3 को पहुँचा'],grp:['done','3 received','3 को मिला']}
+};
+function render(){
+  const ph=$('#phone'); let h;
+  if(cancelled){
+    h=`<div class="zone-glance" data-s="ok"><div class="hud-top" style="margin-bottom:0"><span class="caption">GPS ±8 m</span><span class="tag" data-s="ok">${ic('ok')}${T('SOS cancelled','SOS रद्द')}</span><span class="caption" style="display:flex;gap:4px;align-items:center">${ic('bat')} 41%</span></div></div>
+    <div class="scroll"><div class="big"><div class="display">${T('SOS cancelled','SOS रद्द')}</div><div class="sub">${T('Cancel message will send at first signal · beacon off','रद्द करने का संदेश पहला सिग्नल मिलते ही जाएगा · बीकन बंद')}</div></div>
+    <ul class="chk"><li>${ic('send')}<span>${T('Cancel message to 3 contacts','3 संपर्कों को रद्द संदेश')}</span><span class="st" data-s="wait">${T('queued','कतार में')}</span></li>
+    <li>${ic('radar')}<span>${T('Beacon','बीकन')}</span><span class="st" data-s="off">${T('off','बंद')}</span></li></ul></div>
+    <div class="zone-thumb"><a class="btn primary" href="active-trek.html" style="text-decoration:none">${ic('back')}${T('Back to trek','ट्रैक पर वापस')}</a></div>`;
+  } else {
+    const d=D[del];
+    const call=signal?`<button class="btn" id="call">${ic('call')} <span>${T('Call 112','112 पर कॉल')}</span></button>`
+      :`<button class="btn dis" id="call" aria-disabled="true">${ic('call')} <span>${T('Call 112','112 पर कॉल')}<small>${T('No signal. Enables when any signal appears.','सिग्नल नहीं। कोई भी सिग्नल मिलते ही चालू होगा।')}</small></span></button>`;
+    h=`<div class="zone-glance" data-s="sos"><div class="hud-top" style="margin-bottom:0"><span class="caption">GPS ±8 m</span>${tag('sos')}<span class="caption" style="display:flex;gap:4px;align-items:center">${ic('bat')} 41%</span></div></div>
+    <div class="scroll" style="padding-bottom:6px">
+      <div style="padding:14px 18px 6px"><div class="hero" style="font-size:30px">${T(d.big[0],d.big[1])}</div><div class="sub body" style="margin-top:4px;color:var(--text)">${T(d.sub[0],d.sub[1])}</div></div>
+      <div style="padding:6px 18px 0"><div class="coord" aria-label="Latitude 27.0410 north, longitude 88.2663 east">27.0410° N<br>88.2663° E</div>
+      <div class="num" style="font-size:30px;margin-top:4px">3,102 <small style="font-size:16px;color:var(--text2)">${T('m altitude','मी. ऊँचाई')}</small></div>
+      <div class="caption" style="margin-top:2px">${T('position ±8 m · GPS time 14:32','स्थिति ±8 मी. · GPS समय 14:32')}</div></div>
+      <ul class="chk" style="margin-top:8px"><li style="min-height:46px">${ic('send')}<span>${T('SMS to 3 contacts','3 संपर्कों को SMS')}</span><span class="st" data-s="${d.sms[0]}">${T(d.sms[1],d.sms[2])}</span></li>
+      <li style="min-height:46px"><span class="pulse live"></span><span>${T('Beacon','बीकन')}</span><span class="st" data-s="live">${T('broadcasting','प्रसारित हो रहा है')}</span></li>
+      <li style="min-height:46px">${ic('people')}<span>${T('Group alerted','समूह को सूचित किया')}</span><span class="st" data-s="${d.grp[0]}">${T(d.grp[1],d.grp[2])}</span></li></ul>
+      <div class="caption" style="padding:8px 18px 0;color:var(--text2)">${T('Battery 41% · about 9 h in SOS mode (estimate)','बैटरी 41% · SOS मोड में लगभग 9 घंटे (अनुमान)')}</div>
+    </div>
+    <div class="zone-thumb"><div class="ltrow">${P.ltogHTML('siren',tgl.siren)}${P.ltogHTML('torch',tgl.torch)}</div>${call}
+    ${P.holdWide(T('Cancel SOS · hold 5 s','SOS रद्द करें · 5 सेकंड दबाए रखें'),5,'var(--sos)','Cancel SOS, hold 5 seconds','x')}</div>`;
+  }
+  ph.innerHTML=h; wire(); P.apply();
+}
+function wire(){
+  $$('.ltog').forEach(t=>P.wireLT(t,(k,on)=>{tgl[k]=on}));
+  const hb=$('.hold'); if(hb)P.wireHold(hb,()=>{ setTimeout(()=>{ cancelled=true; render(); hap('one strong pulse · SOS cancelled; SOS pattern stops') },350) });
+  const c=$('#call'); if(c)P.press(c,()=>hap(signal?'tap tick · opens dialler with 112':'1 short · explains why it is disabled',10));
+}
+mkCtl($('#c-del'),[['d0','Nothing delivered'],['d1','2 of 3 delivered'],['d2','All delivered']],s=>{ del=s; cancelled=false; render(); hap('SMS state changed: 1 short',30) },true);
+mkCtl($('#c-real'),[['_s','Signal: toggle'],['_r','Restart SOS']],k=>{ if(k==='_r'){cancelled=false;del='d0';tgl={torch:false,siren:false};render();$$('#c-del button').forEach((b,i)=>b.setAttribute('aria-pressed',i===0));hap('SOS ... --- ... then repeats every 30 s until the first delivery (assumption)',[100,80,100,80,100,200,300,100,300,100,300,200,100,80,100,80,100]);return} signal=!signal; render() });
+P.listeners.push(render);
+render();
+hap('SOS ... --- ... then repeats every 30 s until the first delivery (assumption)',[100,80,100,80,100,200,300,100,300,100,300,200,100,80,100,80,100]);
+say('S.O.S. active. Your position will be sent at first signal.','SOS चालू है। पहला सिग्नल मिलते ही आपकी स्थिति भेजी जाएगी।');
+})();
+</script>
+</body>
+</html>

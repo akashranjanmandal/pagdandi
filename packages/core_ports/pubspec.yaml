@@ -1,0 +1,13 @@
+name: core_ports
+description: Abstract hardware interfaces. Engines reach hardware only through these. Pure Dart.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: ^3.13.2
+dependencies:
+  core_common:
+  core_model:
+  meta: ^1.15.0
+dev_dependencies:
+  test: ^1.25.6

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagdandi active trek</title>
+<style>{{CSS}}</style>
+</head>
+<body>
+{{SPRITE}}
+{{BAR}}
+<div class="layout">
+
+<div class="phone" id="phone" aria-label="Active trek screen">
+  <div class="zone-glance" id="hud" data-s="ok">
+    <div class="hud-top"><span class="caption" id="acc"></span><span id="tagslot"></span><span class="caption" style="display:flex;gap:4px;align-items:center"><svg class="i"><use href="#i-bat"/></svg> 78%</span></div>
+    <div class="hud-main">
+      <div class="dial" id="dial" data-s="ok"><svg class="i arrow" id="arr"><use href="#i-arrow"/></svg><svg class="i glyph" id="glyph" style="display:none;width:60%;height:60%"><use href="#i-uturn"/></svg></div>
+      <div class="hero-wrap"><div class="hero" id="hero"></div><div class="sub" id="sub"></div></div>
+    </div>
+    <div class="tripwrap" id="trip"></div>
+    <div class="pausedline" id="paused" hidden></div>
+    <div id="toastslot"></div>
+  </div>
+
+  <div class="mapzone" id="mapzone" aria-label="Offline map. Drag to pan; it recenters after 8 seconds.">
+    <svg id="map" viewBox="0 0 360 380" preserveAspectRatio="xMidYMid slice">
+      <g id="pan"><g id="cam"><g id="contours"></g><path id="route" fill="none"/><g id="dyn"></g></g></g>
+    </svg>
+    <div class="alt" id="alt">3,214 m</div>
+  </div>
+
+  <div id="snoozeslot" style="padding:0 18px 10px;display:none"></div>
+  <button class="gbar-row" id="gbar" aria-label="Group status, opens radar"></button>
+
+  <div class="deck" id="dock">
+    <div id="sosw"></div>
+    <button class="deckkey" id="pinb" aria-label="Drop a pin"><svg class="i"><use href="#i-pin"/></svg><span>Pin</span></button>
+    <button class="ptt" id="ptt" data-s="idle" aria-label="Hold to talk"></button>
+  </div>
+</div>
+
+<aside class="side">
+  <div class="grp"><h2>State (HUD tint, tag, instruction, dial and map change together in 220 ms)</h2><div class="ctl" id="c-state"></div></div>
+  <div class="grp"><h2>Overlays</h2><div class="ctl" id="c-over"></div></div>
+  <div class="grp"><h2>PTT button state</h2><div class="ctl" id="c-ptt"></div></div>
+  <div class="grp"><h2>What the phone does now</h2>
+    <div class="vbox" id="hlog">haptic: <b>none</b></div>
+    <div class="vbox" id="vlog">voice: <b>none</b></div></div>
+  <div class="grp"><h2>Try</h2>
+    <ul class="notes" style="width:auto">
+      <li>Drag the map. It recenters itself after 8 s.</li>
+      <li>Hold SOS for 3 s: continues to <a href="sos-active.html" style="color:var(--nav)">SOS active</a>.</li>
+      <li>In Off route, tap "I know, exploring".</li>
+      <li>Hold PTT (idle to talking). Tap the chevron for quick messages.</li>
+      <li>Toggle Left-handed, Glove, Sunlight, Hindi, Text 1.5×.</li>
+    </ul></div>
+  <div class="grp"><h2>Notes</h2><p class="label">Element reasons, states, copy, haptics: <b>active-trek.md</b>. Map contours are generated sample data; real tiles arrive in M0.</p></div>
+</aside>
+</div>
+
+<script>{{BASE_JS}}</script>
+<script>
+(function(){
+'use strict';
+const {$,$$,T,ic,tag,hap,say,mkCtl,shortest}=P;
+
+/* ---------- state table ---------- */
+const S={
+ ok:{h:['1.4 km','1.4 कि.मी.'],s:['to Kalipokhri · stay on ridge','कालीपोखरी तक · धार पर चलें'],a:0,glyph:null,
+     hap:['none, steady state (1 short only when returning from off route or wrong way)',null],voice:null},
+ junction:{h:['Fork in 80 m','80 मी. पर दोराहा'],s:['keep left · path going uphill','बाएँ चलें · रास्ता ऊपर जा रहा है'],a:-35,glyph:null,
+     hap:['2 short (junction ahead)',[60,120,60]],voice:['Fork in 80 metres. Keep left, going uphill.','80 मीटर पर दोराहा। बाएँ चलें, रास्ता ऊपर जा रहा है।']},
+ off:{h:['42 m off trail','रास्ते से 42 मी. दूर'],s:['turn back · trail is to your left','वापस मुड़ें · रास्ता बाईं ओर है'],a:-125,glyph:null,
+     hap:['3 long, repeating until resolved or snoozed (off route)',[400,160,400,160,400]],voice:['Warning. You are 40 metres off the trail. Stop and check.','सावधान। आप रास्ते से 40 मीटर दूर हैं। रुकिए और देखिए।']},
+ wrong:{h:['Heading back to start','शुरुआत की ओर जा रहे हैं'],s:['turn around to continue','आगे जाने के लिए पलटें'],a:180,glyph:'uturn',
+     hap:['3 short (wrong way)',[70,90,70,90,70]],voice:['You are heading back to the start. Turn around to continue.','आप शुरुआत की ओर जा रहे हैं। आगे जाने के लिए पलटिए।']},
+ gps:{h:['GPS signal weak','GPS सिग्नल कमज़ोर'],s:['last fix 2 min ago · keep to the trail','2 मिनट पहले की स्थिति · रास्ते पर रहें'],a:0,glyph:'gps',
+     hap:['1 long (GPS lost)',[400]],voice:['GPS signal weak. Keep to the trail.','GPS सिग्नल कमज़ोर है। रास्ते पर बने रहिए।']},
+ regroup:{h:['Rahul · 210 m','राहुल · 210 मी.'],s:['last seen 3 min ago · downhill','3 मिनट पहले देखा · नीचे की ओर'],a:160,glyph:null,
+     hap:['2 long (friend lost)',[400,200,400]],voice:['Rahul is 210 metres behind.','राहुल 210 मीटर पीछे हैं।']}
+};
+let st='ok', prev='ok', stationary=false, toast=null, toastTimer=null, pttS='idle', snzEnd=0, snzTimer=null, ang=0, uncTimer=null, uncR=14;
+
+/* ---------- HUD ---------- */
+function renderStatic(){
+  $('#trip').innerHTML=`<div class="caption">${T('to camp','कैंप तक')}</div><div class="trip ${stationary?'paused':''}">
+   <div><div class="num">6.2<small>${T('km','कि.मी.')}</small></div><div class="caption">${T('distance','दूरी')}</div></div>
+   <div><div class="num">320<small>${T('m','मी.')}</small></div><div class="caption">${T('climb','चढ़ाई')}</div></div>
+   <div><div class="num">2:10<small>${T('h','घं.')}</small></div><div class="caption">${T('time','समय')}</div></div></div>`;
+  const p=$('#paused'); p.hidden=!stationary; p.textContent=T('Paused · tracking resumes when you move','रुका हुआ · चलने पर ट्रैकिंग फिर शुरू होगी');
+  $('#sosw').innerHTML=P.holdRound('<span style="color:var(--sos)">SOS</span><small>hold 3 s</small>',3,'var(--sos)',80,'SOS, hold 3 seconds');
+  P.wireHold($('#sosw .hold'),()=>{ $('#hlog').innerHTML='haptic: <b>one strong pulse · SOS started</b>'; P.go('sos-active.html?from=trek') });
+  $('#ptt').innerHTML=pttInner();
+}
+function pttInner(){
+  if(pttS==='talking')return `<span class="in"><span class="wave live"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>${T('Talking','बोल रहे हैं')}</span></span>`;
+  if(pttS==='receiving')return `<span class="in"><span class="wave live" style="color:var(--nav)"><i></i><i></i><i></i><i></i><i></i></span><span style="font-size:18px">Rahul</span></span>`;
+  if(pttS==='busy')return `<span class="in">${ic('mic','','width:24px;height:24px')}<span style="font-size:13px">${T('Rahul is talking','राहुल बोल रहे हैं')}</span></span>`;
+  return `<span class="in"><span class="qm-hint">${ic('up','','width:14px;height:14px')}${T('quick msgs','त्वरित संदेश')}</span>${ic('mic','','width:30px;height:30px')}<span>${T('Hold to talk','बोलने के लिए दबाए रखें')}</span></span>`;
+}
+function renderPtt(){ const p=$('#ptt'); p.dataset.s=pttS; p.innerHTML=pttInner() }
+function renderHud(first){
+  const d=S[st];
+  $('#hud').dataset.s=st;
+  $('#acc').textContent=st==='gps'?'GPS ±—':'GPS ±6 m';
+  $('#tagslot').innerHTML=tag(st);
+  if(!first&&st==='ok'&&(prev==='off'||prev==='wrong')){ $('#tagslot .tag').classList.add('settle'); hap('1 short (back on route, tag settles)',30) }
+  $('#dial').dataset.s=st;
+  const arr=$('#arr'), gl=$('#glyph');
+  if(d.glyph){ arr.style.display='none'; gl.style.display=''; gl.innerHTML=`<use href="#i-${d.glyph}"/>` } else { arr.style.display=''; gl.style.display='none';
+    ang=shortest(ang,d.a); arr.style.transform=`rotate(${ang}deg)` }
+  $('#hero').textContent=T(d.h[0],d.h[1]); $('#sub').textContent=T(d.s[0],d.s[1]);
+  $('#alt').textContent=st==='off'?'3,209 m':'3,214 m';
+  // group bar
+  const behind=(st!=='regroup');
+  $('#gbar').dataset.s=st==='regroup'?'regroup':(st==='gps'?'warn':'ok');
+  $('#gbar').innerHTML=st==='regroup'
+    ? `${ic('radar')}<span class="main">${T('Regrouping','एकजुट हो रहे हैं')}</span><span class="fact">${T('Rahul · 210 m','राहुल · 210 मी.')}</span>${ic('chev','chev')}`
+    : `${ic('people')}<span class="main">${T('4 of 4 in range','4 में से 4 सीमा में')}</span><span class="fact">${st==='gps'?T('distances paused · GPS lost','दूरी रुकी हुई · GPS नहीं'):T('Rahul 60 m behind','राहुल 60 मी. पीछे')}</span>${ic('chev','chev')}`;
+  // snooze slot
+  const sl=$('#snoozeslot'); sl.style.display=st==='off'?'block':'none'; if(st==='off')renderSnooze();
+  // toast
+  $('#toastslot').innerHTML=toast?`<div class="toast ${toast.out?'out':''}" role="status" aria-live="polite">${ic('send')}<span><b>${toast.from}</b> ${T(toast.en,toast.hi)}</span></div>`:'';
+  drawMap();
+}
+/* ---------- snooze ---------- */
+function renderSnooze(){ const b=$('#snoozeslot'); const left=Math.max(0,Math.ceil((snzEnd-Date.now())/1000));
+  const on=snzEnd&&left>0; if(!on){snzEnd=0;clearInterval(snzTimer)}
+  b.innerHTML=`<button class="snooze" data-s="${on?'on':'off'}" aria-label="${on?'Alerts snoozed, tap to resume':'I know, exploring. Snooze off-route alerts for 10 minutes'}">${on?ic('clock')+`<span>${T('Snoozed','बंद किया')} ${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}<br><small>${T('Tap to resume alerts','अलर्ट फिर चालू करने के लिए दबाएँ')}</small></span>`
+    :ic('eye')+`<span>${T('I know, exploring','पता है, खोज रहे हैं')}<br><small>${T('Silences off-route alerts for 10 min','10 मिनट के लिए रास्ते से हटने की चेतावनी बंद')}</small></span>`}</button>`;
+  b.firstChild.addEventListener('click',()=>{ if(snzEnd){snzEnd=0;hap('1 short · off-route alerts resume',30)} else {snzEnd=Date.now()+600000;clearInterval(snzTimer);snzTimer=setInterval(()=>{if(!document.hidden&&st==='off')renderSnooze()},1000);hap('tap tick · off-route buzz stops for 10 min',10)} renderSnooze() });
+}
+
+/* ---------- map ---------- */
+const NS='http://www.w3.org/2000/svg';
+const ROUTE='M40 470 C100 450 150 430 200 400 S 270 340 310 300 S 370 230 420 190 S 500 120 560 80';
+(function initMap(){
+  $('#route').setAttribute('d',ROUTE);
+  // sample contours: rings around two peaks with noise
+  let c='';
+  const ring=(cx,cy,r,k,ax)=>{ let d=''; for(let t=0;t<=360;t+=10){const a=t*Math.PI/180, n=1+.07*Math.sin(3*a+k)+.04*Math.sin(5*a+2*k);
+      const x=Math.cos(a)*r*ax*n, y=Math.sin(a)*r*n, rot=-.35, X=cx+x*Math.cos(rot)-y*Math.sin(rot), Y=cy+x*Math.sin(rot)+y*Math.cos(rot);
+      d+=(t?'L':'M')+X.toFixed(1)+' '+Y.toFixed(1)} return d+'Z' };
+  for(let i=1;i<=13;i++)c+=`<path d="${ring(430,140,i*26,i,1.5)}" fill="none" stroke="var(--contour)" stroke-width="${i%5===0?2.4:1.4}"/>`;
+  for(let i=1;i<=9;i++)c+=`<path d="${ring(110,330,i*24,i+3,1.3)}" fill="none" stroke="var(--contour)" stroke-width="${i%5===0?2.4:1.4}"/>`;
+  $('#contours').innerHTML=c;
+  $('#route').setAttribute('stroke','var(--nav)'); $('#route').setAttribute('stroke-width','4'); $('#route').setAttribute('stroke-linecap','round');
+})();
+const rp=$('#route');
+function at(L){ const p=rp.getPointAtLength(L), q=rp.getPointAtLength(L+1.5); return {x:p.x,y:p.y,a:Math.atan2(q.y-p.y,q.x-p.x)} }
+function bearingDeg(rad){ return rad*180/Math.PI+90 }   // 0 = up
+function sample(p,from,to,step){ let d=''; for(let l=from;l<=to;l+=step){const q=p.getPointAtLength(l);d+=(d?'L':'M')+q.x.toFixed(1)+' '+q.y.toFixed(1)} return d }
+function drawMap(){
+  const len=rp.getTotalLength(), Lj=len*.52, J=at(Lj);
+  const ba=J.a+.9, dir={x:Math.cos(ba),y:Math.sin(ba)}, perp={x:-dir.y,y:dir.x};
+  const bd=`M${J.x} ${J.y} C${J.x+dir.x*50} ${J.y+dir.y*50} ${J.x+dir.x*110+perp.x*14} ${J.y+dir.y*110+perp.y*14} ${J.x+dir.x*190} ${J.y+dir.y*190}`;
+  const bp=document.createElementNS(NS,'path'); bp.setAttribute('d',bd); $('#dyn').appendChild(bp);
+  let youL=len*.30, you, heading, ref=youL;
+  if(st==='junction'){ youL=Lj-27; ref=youL }
+  you=at(youL); heading=bearingDeg(you.a);
+  if(st==='off'){ const bpnt=bp.getPointAtLength(46); you={x:bpnt.x,y:bpnt.y}; heading=bearingDeg(Math.atan2(J.y-you.y,J.x-you.x)); ref=Lj-27 }
+  if(st==='wrong') heading+=180;
+  const fr=(L,t,out)=>{ const p=at(Math.max(10,Math.min(len-10,L))); const off={x:p.x+9*Math.cos(p.a+1.57),y:p.y+9*Math.sin(p.a+1.57)};
+    return `<g><circle cx="${off.x}" cy="${off.y}" r="13" fill="#000" stroke="${out?'var(--text3)':'var(--ok)'}" stroke-width="2.5" ${out?'stroke-dasharray="3 3"':''}/><text x="${off.x}" y="${off.y+4}" text-anchor="middle" font-size="11" fill="${out?'var(--text2)':'var(--text)'}" font-family="Barlow,sans-serif" font-weight="500">${t}</text></g>` };
+  let g='';
+  // unchosen / taken branch
+  g+=`<path d="${bd}" fill="none" stroke="${st==='off'?'var(--warn)':'var(--text3)'}" stroke-width="${st==='off'?3:3.5}" stroke-linecap="round" ${st==='off'?'stroke-dasharray="1 7"':''}/>`;
+  // breadcrumb (dotted, faint)
+  let crumb=st==='off'?sample(rp,0,Lj,5)+' '+sample(bp,0,46,5).replace('M','L'):sample(rp,0,youL,5);
+  g+=`<path d="${crumb}" fill="none" stroke="var(--text2)" stroke-opacity=".6" stroke-width="3" stroke-dasharray="1 6" stroke-linecap="round"/>`;
+  // junction node
+  g+= st==='junction'
+    ? `<circle cx="${J.x}" cy="${J.y}" r="16" fill="none" stroke="var(--nav)" stroke-width="1.5"/><circle cx="${J.x}" cy="${J.y}" r="8" fill="#000" stroke="var(--nav)" stroke-width="4"/>`
+    : `<circle cx="${J.x}" cy="${J.y}" r="6" fill="#000" stroke="var(--text2)" stroke-width="2"/>`;
+  // friends
+  if(st==='regroup'){ g+=fr(len*.30-70,'RK',true); g+=fr(ref+70,'AS',false); g+=fr(ref+130,'MD',false) }
+  else { g+=fr(ref-20,'RK',false); g+=fr(ref+70,'AS',false); g+=fr(ref+130,'MD',false) }
+  // you
+  if(st==='gps'){ g+=`<circle id="unc" cx="${you.x}" cy="${you.y}" r="${uncR}" fill="none" stroke="var(--signal)" stroke-dasharray="3 4" stroke-width="1.5" style="transition:r 1s linear"/><circle cx="${you.x}" cy="${you.y}" r="8" fill="none" stroke="var(--signal)" stroke-width="3"/>` }
+  else {
+    if(st==='regroup')g+=`<circle class="mk-pulse" cx="${you.x}" cy="${you.y}" r="9" fill="none" stroke="var(--signal)" stroke-width="2"/>`;
+    g+=`<path d="M0 0 L-16 -34 A38 38 0 0 1 16 -34 Z" transform="translate(${you.x} ${you.y}) rotate(${heading})" fill="var(--signal)" opacity=".28"/><circle cx="${you.x}" cy="${you.y}" r="9" fill="var(--signal)" stroke="#000" stroke-width="2"/>`;
+  }
+  $('#dyn').innerHTML=g;
+  $('#cam').style.transform=`translate(${180-you.x}px,${190-you.y}px)`;
+}
+// camera moves with a transition; pan is a separate user offset that returns after 8 s
+const cam=$('#cam'), pan=$('#pan');
+cam.style.transition='transform 320ms var(--ease-out)'; pan.style.transition='none';
+let drag=null, rcTimer=null, pdx=0, pdy=0;
+const mz=$('#mapzone');
+mz.addEventListener('pointerdown',e=>{ clearTimeout(rcTimer); drag={x:e.clientX-pdx,y:e.clientY-pdy}; pan.style.transition='none'; mz.setPointerCapture(e.pointerId); mz.style.cursor='grabbing' });
+mz.addEventListener('pointermove',e=>{ if(!drag)return; pdx=e.clientX-drag.x; pdy=e.clientY-drag.y; pan.style.transform=`translate(${pdx}px,${pdy}px)` });
+['pointerup','pointercancel'].forEach(ev=>mz.addEventListener(ev,()=>{ if(!drag)return; drag=null; mz.style.cursor='grab';
+  clearTimeout(rcTimer); rcTimer=setTimeout(()=>{ pan.style.transition='transform 320ms var(--ease-out)'; pdx=pdy=0; pan.style.transform='translate(0,0)'; hap('map recentered (no haptic)') },8000) }));
+
+/* ---------- uncertainty circle grows while GPS is lost ---------- */
+function startUnc(){ clearInterval(uncTimer); uncR=14; if(st!=='gps')return;
+  uncTimer=setInterval(()=>{ if(st!=='gps'){clearInterval(uncTimer);return} uncR=Math.min(80,uncR+(document.body.classList.contains('reduce')?66:4)); const u=$('#unc'); if(u)u.setAttribute('r',uncR); if(uncR>=80)clearInterval(uncTimer)},1000) }
+
+/* ---------- wiring ---------- */
+function setState(s){ prev=st; st=s; renderHud(false); const d=S[s];
+  if(d.hap[0]&&s!=='ok')hap(d.hap[0],d.hap[1]); else if(s==='ok'&&prev!=='off'&&prev!=='wrong')hap(d.hap[0]);
+  if(d.voice)say(d.voice[0],d.voice[1]); else $('#vlog').innerHTML='voice: <b>none</b>';
+  startUnc(); }
+mkCtl($('#c-state'),[['ok','On route'],['junction','Junction'],['off','Off route'],['wrong','Wrong way'],['gps','GPS lost'],['regroup','Regroup']],setState,true);
+mkCtl($('#c-over'),[['_st','Stationary on/off'],['_to','Quick message toast']],(k)=>{
+  if(k==='_st'){stationary=!stationary;renderStatic();renderHud(true);return}
+  clearTimeout(toastTimer); toast={from:'Rahul',en:'Take left fork',hi:'बाएँ वाला रास्ता लें'}; renderHud(true);
+  hap('1 short · chime, then voice: “Rahul says: Take left fork”',30);
+  toastTimer=setTimeout(()=>{ toast.out=true; renderHud(true); setTimeout(()=>{toast=null;renderHud(true)},220) },6000) });
+mkCtl($('#c-ptt'),[['idle','Idle'],['receiving','Receiving'],['busy','Channel busy']],s=>{pttS=s;renderPtt()},true);
+const ptt=$('#ptt');
+ptt.addEventListener('pointerdown',e=>{ if(pttS==='busy'){hap('low channel-busy beep · 1 short');return} ptt.dataset.prev=pttS; pttS='talking'; ptt.classList.add('down'); renderPtt(); hap('tap tick 10 ms · roger beep (start)',10); ptt.setPointerCapture(e.pointerId) });
+['pointerup','pointercancel'].forEach(ev=>ptt.addEventListener(ev,()=>{ if(pttS==='talking'){ pttS='idle'; ptt.classList.remove('down'); renderPtt(); hap('roger beep (end) · 1 short',30) } }));
+$('#pinb').addEventListener('click',()=>hap('tap tick 10 ms · opens pin types (screen S13, batch D4)',10));
+$('#gbar').addEventListener('click',()=>hap('tap tick · opens Group radar (screen S6, batch D3)',10));
+
+function renderAll(){ renderStatic(); renderHud(true); renderPtt(); P.apply() }
+P.listeners.push(renderAll);
+renderAll();
+})();
+</script>
+</body>
+</html>
