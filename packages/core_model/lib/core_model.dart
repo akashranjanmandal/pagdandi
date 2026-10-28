@@ -3,6 +3,7 @@ library;
 
 export 'src/haptic_pattern.dart';
 export 'src/location_fix.dart';
+export 'src/outbox_entry.dart';
 export 'src/samples.dart';
 export 'src/signal_state.dart';
 export 'src/sms.dart';

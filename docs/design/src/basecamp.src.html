@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagdandi basecamp</title>
+<style>{{CSS}}</style>
+</head>
+<body>
+{{SPRITE}}
+{{BAR}}
+<div class="layout">
+<div class="phone" id="phone" aria-label="Basecamp"></div>
+<aside class="side">
+  <div class="grp"><h2>State</h2><div class="ctl" id="c-state"></div></div>
+  <div class="grp"><h2>Notes</h2><p class="label">Reasons, states, copy: <b>basecamp.md</b>. Before a trek there are only two questions: am I ready, and start.</p></div>
+</aside>
+</div>
+<script>{{BASE_JS}}</script>
+<script>
+(function(){
+'use strict';
+const {$,$$,ic,mkCtl}=P;
+let st='ready';
+const R={
+ ready:[['ok','Emergency contacts','2 will get your SOS',null,'ok'],['ok','Location','Allowed all the time',null,'ok'],['ok','SMS','Allowed',null,'ok'],['ok','Notifications','Allowed',null,'ok'],['warn','Keep running in background','Not confirmed','Check','warn'],['ok','Emergency card','Blood group B+',null,'ok']],
+ blocked:[['bad','Emergency contacts','None yet: an SOS has nobody to message','Add','bad'],['bad','SMS','Not allowed: an SOS cannot be sent','Allow','bad'],['ok','Location','Allowed all the time',null,'ok'],['ok','Notifications','Allowed',null,'ok'],['warn','Keep running in background','Not confirmed','Check','warn'],['warn','Emergency card','Empty','Fill','warn']],
+ running:[['ok','Trek running','Started 14:02 · 2.4 km',null,'ok']]
+};
+function render(){
+  const rows=R[st]; const blocked=rows.filter(r=>r[4]==='bad').length;
+  let h=`<div style="padding:22px 18px 8px"><div class="display">Pagdandi</div><div class="label" style="margin-top:4px">Ready to trek?</div></div>`;
+  if(st==='running'){
+    h+=`<div class="scroll"><div class="rrow" data-s="ok">${ic('ok','s')}<div class="m"><div class="a">Trek running</div><div class="b">Started 14:02 · 2.4 km walked</div></div></div></div><div class="zone-thumb"><a class="btn primary" href="active-trek.html" style="text-decoration:none">${ic('arrow')}Open trek</a></div>`;
+  } else {
+    h+=`<div class="scroll">`+rows.map(r=>`<div class="rrow" data-s="${r[4]==='bad'?'bad':r[4]}">${ic(r[4]==='ok'?'ok':(r[4]==='bad'?'octagon':'warn'),'s')}<div class="m"><div class="a">${r[1]}</div><div class="b">${r[2]}</div></div>${r[3]?`<button class="fix">${r[3]}</button>`:''}</div>`).join('')+`<div style="padding:18px"><div class="label">Last trek</div><div class="body" style="color:var(--text2)">None yet</div></div></div>`;
+    h+=`<div class="zone-thumb">${blocked?`<button class="btn dis" aria-disabled="true">${ic('arrow')}<span>Start trek<small>Fix ${blocked} thing${blocked>1?'s':''} first</small></span></button>`:`<button class="btn primary" id="start">${ic('arrow')}Start trek</button>`}<a class="btn" href="emergency-card.html" style="text-decoration:none">${ic('card')}Emergency card</a></div>`;
+  }
+  $('#phone').innerHTML=h; const s=$('#start'); if(s) P.press(s,()=>{P.hap('1 short · Start trek: service starts, notification appears',30);st='running';render();$$('#c-state button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===st))}); P.apply();
+}
+mkCtl($('#c-state'),[['ready','Ready'],['blocked','2 things to fix'],['running','Trek running']],s=>{st=s;render()},true);
+P.listeners.push(render);
+render();
+})();
+</script>
+</body>
+</html>

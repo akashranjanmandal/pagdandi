@@ -7,7 +7,7 @@ Offline-first trekking safety and group app for a small private group (Flutter +
 - Working rules and decisions: [CLAUDE.md](CLAUDE.md)
 
 ## Status
-M0 (monorepo, CI, design tokens, fakes and simulator, Pigeon bridge, map spike) is done. The five D2 screens (Active Trek, Lost mode, Friend SOS, Fall countdown, SOS active) are implemented in Flutter as a preview build with a gallery home. Trek engines, the foreground service and native safety guard start in M1.
+M1 is wired end to end: Setup, Basecamp (route choice, readiness, winter advice), live trek guidance on the bundled Lohajung to Brahmatal route, SOS with a persisted SMS outbox, fall detection, siren, torch, dial 112, voice alerts, pins, exact alarms, boot resume and a native safety guard. 1,000+ automated tests, plus an end-to-end test on the emulator. Groups, BLE mesh, offline map tiles and a friend-SOS screen are the next milestones. QA reports and the issue list are in [docs/qa](docs/qa).
 
 ## Develop
 ```
@@ -17,5 +17,6 @@ melos run analyze                    # zero warnings, infos fail
 melos run test:dart && melos run test:flutter
 dart run tool/check_coverage.dart    # coverage gates
 cd app && flutter build apk --release
+tool/qa/run_integration.sh          # end-to-end on a connected emulator/phone
 ```
-Maps for the spike: see `docs/decisions/0001-map-stack.md`.
+Map stack decision: `docs/decisions/0001-map-stack.md`. Rebuild the route file: `tool/route/osm_route_to_gpx.dart`.

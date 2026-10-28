@@ -49,6 +49,9 @@ The group row is a full-width tappable row; below it a single aligned key deck o
 | Regroup | rings, signal tint | "Rahul · 210 m" / "last seen 3 min ago · downhill" | toward Rahul, signal | my marker pulses (beacon live); Rahul hollow dashed | signal colour: "Regrouping" · "Rahul · 210 m" | 2 long (friend lost) | yes |
 | Stationary (overlay) | unchanged | triplet numbers dim to text-2; "Paused · tracking resumes when you move" (primary text) | unchanged | unchanged | unchanged | none | none |
 
+## Free trek (no route loaded) - added with the first working core
+Until a route is loaded (planner, M3) the core has no navigation state. The screen shows what is real: tag "Tracking" (nav colour, pin icon), hero = distance walked ("2.4 km", sub "walked · no route loaded"), the triplet headed "so far" (distance, climb so far, time), the breadcrumb only (no route, junction or branch), group row "Solo". No instruction is ever invented.
+
 ## Map behaviour
 - One-finger pan. Auto-recenters after about 8 s of no touch (320 ms ease-out; reduce-motion: instant).
 - Camera moves to the new position with a 320 ms transition on state change.

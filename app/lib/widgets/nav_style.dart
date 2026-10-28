@@ -7,7 +7,7 @@ extension NavStyle on NavState {
   /// Colour of the tag, dial and arrow.
   Color color(Palette p) => switch (this) {
     NavState.onRoute => p.ok,
-    NavState.junction => p.nav,
+    NavState.junction || NavState.free => p.nav,
     NavState.offRoute || NavState.wrongWay || NavState.gpsLost => p.warn,
     NavState.regroup => p.signal,
   };
@@ -15,7 +15,7 @@ extension NavStyle on NavState {
   /// Very subtle HUD background for the state.
   Color tint(Palette p) => switch (this) {
     NavState.onRoute => p.surface,
-    NavState.junction => p.tintNav,
+    NavState.junction || NavState.free => p.tintNav,
     NavState.offRoute || NavState.wrongWay || NavState.gpsLost => p.tintWarn,
     NavState.regroup => p.tintSignal,
   };

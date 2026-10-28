@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagdandi setup</title>
+<style>{{CSS}}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font:400 13px var(--f-text);color:var(--text2)}
+.input{height:calc(64px*var(--k));border-radius:16px;background:var(--surface);border:var(--line) solid var(--hair);padding:0 16px;font:500 20px var(--f-text);color:var(--text);width:100%}
+.input:focus{outline:2px solid var(--nav);outline-offset:2px}
+.chips{display:grid;grid-template-columns:repeat(4,1fr);gap:calc(10px*var(--sp))}
+.chip{height:calc(56px*var(--k));border-radius:12px;border:var(--line) solid var(--hair);background:var(--surface);font:500 18px var(--f-text);color:var(--text);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--signal);border-color:var(--signal);color:#000}
+.why{font:400 16px/1.4 var(--f-text);color:var(--text);margin-top:12px}
+.step{font:400 13px var(--f-text);color:var(--text2)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:var(--line) solid var(--hair);background:var(--surface);min-height:56px}
+.bar{height:4px;background:var(--hair)} .bar>i{display:block;height:100%;background:var(--signal)}
+.brands{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.brands .chip{height:44px;padding:0 12px;font-size:14px;flex:none}
+ol.steps{margin:0 0 0 20px;font:400 16px/1.5 var(--f-text);color:var(--text)}
+.contact{display:flex;align-items:center;gap:12px;min-height:calc(64px*var(--k));border-bottom:var(--line) solid var(--hair);padding:0 2px}
+.contact .nm{flex:1}
+.denied{border:var(--line) solid var(--warn);border-radius:12px;padding:12px;margin-top:14px;font:400 16px/1.4 var(--f-text);color:var(--text)}
+</style>
+</head>
+<body>
+{{SPRITE}}
+{{BAR}}
+<div class="layout">
+<div class="phone" id="phone" aria-label="First-run setup"></div>
+<aside class="side">
+  <div class="grp"><h2>Step</h2><div class="ctl" id="c-step"></div></div>
+  <div class="grp"><h2>Permission result</h2><div class="ctl" id="c-perm"></div></div>
+  <div class="grp"><h2>Notes</h2><p class="label">Reasons, states, copy: <b>setup.md</b>. One decision per screen, big Continue in the thumb zone. Language and voice test are not in this version (English only; voice alerts come with M2).</p></div>
+</aside>
+</div>
+<script>{{BASE_JS}}</script>
+<script>
+(function(){
+'use strict';
+const {$,$$,ic,mkCtl}=P;
+const STEPS=[
+ {k:'hand',t:'Which hand holds your phone?',why:'Your main keys sit under that thumb. You can change this later.'},
+ {k:'name',t:'What should your group call you?',why:'Shown to friends on the map and in alerts, and sent in an SOS.'},
+ {k:'contacts',t:'Who should we message in an emergency?',why:'An SOS is sent by SMS to these people. Add at least one.'},
+ {k:'card',t:'Emergency card',why:'Anyone helping you can read this without unlocking your phone. Skip if you prefer.',optional:true},
+ {k:'loc',t:'Allow location',why:'So your group can find you without network, and so your position goes out in an SOS.',perm:'location'},
+ {k:'bg',t:'Allow location all the time',why:'So tracking and SOS keep working with the screen off and the app closed. Choose "Allow all the time".',perm:'background location'},
+ {k:'sms',t:'Allow sending SMS',why:'So an SOS can reach your contacts without internet. Standard SMS charges may apply.',perm:'sms'},
+ {k:'notif',t:'Allow notifications',why:'So you see that your trek is running and get a warning if it stops.',perm:'notifications'},
+ {k:'batt',t:'Keep Pagdandi running',why:'Some phones stop apps to save battery. Follow your phone\'s steps so a trek is never cut off.'},
+ {k:'ready',t:'You are ready',why:''}
+];
+let i=0, hand='right', permResult='ask', name='Akash', blood='B+', brand='Xiaomi';
+const BR={Xiaomi:['Settings, Apps, Manage apps, Pagdandi','Battery saver, choose No restrictions','Autostart: turn on'],Samsung:['Settings, Battery, Background usage limits','Never sleeping apps, add Pagdandi'],Realme:['Settings, Battery, App battery management','Pagdandi, Allow background activity'],Vivo:['Settings, Battery, Background power consumption','Pagdandi, Allow high background power'],Oppo:['Settings, Battery, App battery management','Pagdandi, Allow background activity'],OnePlus:['Settings, Battery, Battery optimisation','Pagdandi, Don\'t optimise']};
+function render(){
+  const s=STEPS[i]; let body='', thumb='';
+  const top=`<div class="topbar"><button class="tb" id="back" style="min-width:auto;height:44px;padding:0 12px;border-width:1px" aria-label="Back">${ic('back')}</button><span class="step">${i+1} of ${STEPS.length}</span><span style="width:60px"></span></div><div class="bar"><i style="width:${(i+1)/STEPS.length*100}%"></i></div>`;
+  if(s.k==='hand') body=`<div class="why">${s.why}</div><div style="display:flex;gap:12px;margin-top:24px"><button class="opt" data-h="left" aria-pressed="${hand==='left'}" style="justify-content:center">Left</button><button class="opt" data-h="right" aria-pressed="${hand==='right'}" style="justify-content:center">Right</button></div>`;
+  if(s.k==='name') body=`<div class="why">${s.why}</div><div class="field" style="margin-top:20px"><label for="nm">Your name</label><input class="input" id="nm" value="${name}"></div><div class="label">Initials on the map: <b style="color:var(--text);font-weight:500">${name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()}</b></div>`;
+  if(s.k==='contacts') body=`<div class="why">${s.why}</div><div style="margin-top:12px"><div class="contact"><div class="av">M</div><div class="nm"><div style="font-weight:500">Meera</div><div class="caption">+91 98xxx xx210</div></div>${ic('check','',"color:var(--ok)")}</div><div class="contact"><div class="av">R</div><div class="nm"><div style="font-weight:500">Rahul</div><div class="caption">+91 97xxx xx455</div></div>${ic('check','',"color:var(--ok)")}</div></div><button class="btn" style="margin-top:12px">${ic('plus')}Add a contact</button><div class="caption" style="margin-top:8px">2 contacts will get your SOS</div>`;
+  if(s.k==='card') body=`<div class="why">${s.why}</div><div class="field" style="margin-top:16px"><label>Blood group</label><div class="chips">${['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(b=>`<button class="chip" data-b="${b}" aria-pressed="${blood===b}">${b}</button>`).join('')}</div></div><div class="field"><label for="al">Allergies</label><input class="input" id="al" placeholder="None" value="Penicillin"></div><div class="field"><label for="md">Medicines</label><input class="input" id="md" placeholder="None"></div>`;
+  if(s.perm) body=`<div class="why">${s.why}</div>${permResult==='denied'?`<div class="denied"><b style="font-weight:500">Not allowed.</b> Without ${s.perm}, ${({location:'your position cannot be tracked or sent',['background location']:'tracking stops when the screen is off',sms:'an SOS cannot be sent to your contacts',notifications:'you will not see a warning if your trek stops'})[s.perm]}. You can allow it in Settings.</div>`:''}`;
+  if(s.k==='batt') body=`<div class="why">${s.why}</div><div class="brands" style="margin-top:14px">${Object.keys(BR).map(b=>`<button class="chip" data-br="${b}" aria-pressed="${brand===b}">${b}</button>`).join('')}</div><ol class="steps">${BR[brand].map(x=>`<li>${x}</li>`).join('')}</ol>`;
+  if(s.k==='ready') body=`<div style="padding-top:8px"><div class="rrow" data-s="ok">${ic('ok','s')}<div class="m"><div class="a">Your details</div><div class="b">Akash · hand: ${hand} · card filled</div></div></div><div class="rrow" data-s="ok">${ic('ok','s')}<div class="m"><div class="a">Emergency contacts</div><div class="b">2 will get your SOS</div></div></div><div class="rrow" data-s="ok">${ic('ok','s')}<div class="m"><div class="a">Location, SMS, notifications</div><div class="b">All allowed</div></div></div><div class="rrow" data-s="warn">${ic('warn','s')}<div class="m"><div class="a">Keep running in background</div><div class="b">Not confirmed. Check your phone's battery steps.</div></div><button class="fix">Check again</button></div></div>`;
+  // thumb zone
+  if(s.perm){ thumb=permResult==='denied'
+      ? `<button class="btn primary">${ic('card')}Open settings</button><button class="btn" id="next">Continue without it</button>`
+      : `<button class="btn primary" id="allow">${ic('ok')}Allow ${s.perm}</button><button class="btn" id="next">Not now</button>`; }
+  else if(s.k==='batt') thumb=`<button class="btn primary">${ic('card')}Open battery settings</button><button class="btn" id="next">Continue</button>`;
+  else if(s.k==='card') thumb=`<button class="btn primary" id="next">${ic('check')}Save and continue</button><button class="btn" id="next2">Skip</button>`;
+  else if(s.k==='ready') thumb=`<a class="btn primary" href="basecamp.html" style="text-decoration:none">${ic('home')}Go to Basecamp</a>`;
+  else thumb=`<button class="btn primary" id="next">Continue</button>`;
+  $('#phone').innerHTML=top+`<div class="scroll" style="padding:24px 18px 12px"><h1 class="display" style="font-size:36px;line-height:1.05">${s.t}</h1>${body}</div><div class="zone-thumb">${thumb}</div>`;
+  $('#back').onclick=()=>{if(i>0){i--;permResult='ask';render()}};
+  const nx=()=>{if(i<STEPS.length-1){i++;permResult='ask';render();sync()}};
+  ['#next','#next2'].forEach(q=>{const e=$(q);if(e)e.onclick=nx});
+  const al=$('#allow'); if(al) al.onclick=()=>{ if(permResult==='deny-next'){permResult='denied';render()} else nx() };
+  $$('[data-h]').forEach(b=>b.onclick=()=>{hand=b.dataset.h;render()});
+  $$('[data-b]').forEach(b=>b.onclick=()=>{blood=b.dataset.b;render()});
+  $$('[data-br]').forEach(b=>b.onclick=()=>{brand=b.dataset.br;render()});
+  const nm=$('#nm'); if(nm) nm.oninput=()=>{name=nm.value||' '};
+  P.apply();
+}
+function sync(){ $$('#c-step button').forEach((b,j)=>b.setAttribute('aria-pressed',j===i)) }
+mkCtl($('#c-step'),STEPS.map((s,j)=>[String(j),(j+1)+' '+s.k]),s=>{i=+s;permResult='ask';render()},true);
+mkCtl($('#c-perm'),[['ask','Ask'],['denied','Denied']],s=>{permResult=s;render()},true);
+P.listeners.push(render);
+render();
+})();
+</script>
+</body>
+</html>

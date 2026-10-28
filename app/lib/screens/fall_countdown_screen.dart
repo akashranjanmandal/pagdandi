@@ -26,13 +26,29 @@ enum FallStage {
 @immutable
 class FallView {
   /// Creates a view.
-  const FallView({this.stage = FallStage.running, this.secondsLeft = 60});
+  const FallView({
+    this.stage = FallStage.running,
+    this.secondsLeft = 60,
+    this.accuracy = 'GPS ±8 m',
+    this.battery = 71,
+    this.detail = 'Detected: hard impact, then no movement for 30 s',
+  });
 
   /// Flow position.
   final FallStage stage;
 
   /// Whole seconds until SOS is sent.
   final int secondsLeft;
+
+  /// "GPS ±8 m" or "GPS ±—" without a fix.
+  final String accuracy;
+
+  /// Battery percent.
+  final int battery;
+
+  /// What was detected, in words. The real app only says a fall was
+  /// suspected; the design sample shows a fuller line.
+  final String detail;
 }
 
 /// Shown over the lock screen after a fall: the safe action ("I'm OK") is the
@@ -76,8 +92,8 @@ class FallCountdownScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GlanceStrip(
-                accuracy: '14:31 GPS time',
-                battery: 71,
+                accuracy: view.accuracy,
+                battery: view.battery,
                 tint: sosTint(p),
                 tag: StatusTag(
                   icon: AppIcon.warn,
@@ -106,7 +122,7 @@ class FallCountdownScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Detected: hard impact, then no movement for 30 s',
+                      view.detail,
                       textAlign: TextAlign.center,
                       style: TypeScale.caption.copyWith(color: p.text2),
                     ),
@@ -148,8 +164,8 @@ class FallCountdownScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GlanceStrip(
-                accuracy: 'GPS ±8 m',
-                battery: 71,
+                accuracy: view.accuracy,
+                battery: view.battery,
                 tint: sosTint(p),
                 tag: StatusTag(
                   icon: AppIcon.octagon,
@@ -160,7 +176,7 @@ class FallCountdownScreen extends StatelessWidget {
               const Expanded(
                 child: BigInstruction(
                   title: 'SOS active',
-                  sub: 'SMS will send at first signal · beacon on',
+                  sub: 'SMS will send at first signal',
                 ),
               ),
               ThumbPanel(
@@ -182,8 +198,8 @@ class FallCountdownScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GlanceStrip(
-                accuracy: 'GPS ±6 m',
-                battery: 71,
+                accuracy: view.accuracy,
+                battery: view.battery,
                 tint: p.surface,
                 tag: StatusTag(icon: AppIcon.ok, label: 'OK', color: p.ok),
               ),

@@ -15,9 +15,15 @@ class ScreenFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = UiScope.of(context).palette;
+    // Edge-to-edge ignores adjustResize, so lift the content above the
+    // keyboard ourselves; otherwise bottom keys end up hidden behind it.
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     return ColoredBox(
       color: p.bg,
-      child: SafeArea(child: child),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: keyboard),
+        child: SafeArea(bottom: keyboard == 0, child: child),
+      ),
     );
   }
 }

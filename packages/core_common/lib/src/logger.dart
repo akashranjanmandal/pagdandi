@@ -14,6 +14,8 @@ enum LogLevel {
 }
 
 /// Logging interface. Implementations write to the rotating local log.
+// A port is a deliberate one-method interface: fakes and adapters implement it.
+// ignore: one_member_abstracts
 abstract interface class Logger {
   /// Records one line.
   void log(

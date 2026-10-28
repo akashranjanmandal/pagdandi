@@ -40,7 +40,7 @@ P.shortest=(cur,target)=>cur+(((target-cur)%360+540)%360-180);
 const TAGS=P.TAGS={ok:['ok','On route','रास्ते पर'],junction:['fork','Junction ahead','आगे दोराहा'],off:['warn','Off route','रास्ते से हटे'],
   wrong:['uturn','Wrong way','गलत दिशा'],gps:['gps','GPS lost','GPS सिग्नल नहीं'],regroup:['radar','Regrouping','एकजुट हो रहे हैं'],
   sos:['sos','SOS','SOS'],lost:['stay','Lost mode','खोए हुए'],flost:['radar','Friend out of range','साथी सीमा से बाहर'],
-  fsos:['sos','Friend SOS','साथी का SOS'],fall:['warn','Fall detected','गिरना पता चला']};
+  fsos:['sos','Friend SOS','साथी का SOS'],fall:['warn','Fall detected','गिरना पता चला'],free:['pin','Tracking','ट्रैकिंग']};
 P.tag=k=>`<span class="tag" data-s="${k}">${P.ic(TAGS[k][0])}${P.T(TAGS[k][1],TAGS[k][2])}</span>`;
 P.mkCtl=function(el,items,fn,first){
   el.innerHTML=items.map((it,i)=>`<button data-s="${it[0]}" aria-pressed="${!!first&&i===0}">${it[1]}</button>`).join('');

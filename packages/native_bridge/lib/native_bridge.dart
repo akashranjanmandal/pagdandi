@@ -3,4 +3,14 @@ library;
 
 export 'src/adapters.dart';
 export 'src/generated/native_api.g.dart'
-    show DeviceCapabilities, HapticRequest, PagdandiFlutterApi, PagdandiHostApi;
+    show
+        DeviceCapabilities,
+        HapticRequest,
+        HealthSnapshotDto,
+        LocationFixDto,
+        LocationRequestDto,
+        PagdandiFlutterApi,
+        PagdandiHostApi,
+        SignalStateDto,
+        SmsStatusDto;
+export 'src/native_events.dart';

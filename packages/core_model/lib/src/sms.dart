@@ -15,7 +15,10 @@ enum SmsStatus {
   delivered(isFinal: true),
 
   /// Sending failed.
-  failed(isFinal: true);
+  failed(isFinal: true),
+
+  /// Dropped because the SOS was cancelled before it was sent.
+  cancelled(isFinal: true);
 
   const SmsStatus({required this.isFinal});
 

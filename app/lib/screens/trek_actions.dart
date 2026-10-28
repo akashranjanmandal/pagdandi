@@ -13,6 +13,8 @@ class TrekActions {
     this.onTalkEnd = _no,
     this.onSnooze = _no,
     this.onResumeAlerts = _no,
+    this.onEndTrek = _no,
+    this.onReverseRoute = _no,
   });
 
   /// Each second of the SOS hold (haptic tick).
@@ -38,6 +40,12 @@ class TrekActions {
 
   /// Resume snoozed alerts.
   final VoidCallback onResumeAlerts;
+
+  /// The End trek hold completed (live trek only).
+  final VoidCallback onEndTrek;
+
+  /// "I'm heading back": follow the route the other way.
+  final VoidCallback onReverseRoute;
 }
 
 void _no() {}

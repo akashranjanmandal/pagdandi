@@ -77,17 +77,20 @@ const S={
      hap:['3 short (wrong way)',[70,90,70,90,70]],voice:['You are heading back to the start. Turn around to continue.','आप शुरुआत की ओर जा रहे हैं। आगे जाने के लिए पलटिए।']},
  gps:{h:['GPS signal weak','GPS सिग्नल कमज़ोर'],s:['last fix 2 min ago · keep to the trail','2 मिनट पहले की स्थिति · रास्ते पर रहें'],a:0,glyph:'gps',
      hap:['1 long (GPS lost)',[400]],voice:['GPS signal weak. Keep to the trail.','GPS सिग्नल कमज़ोर है। रास्ते पर बने रहिए।']},
+ free:{h:['2.4 km','2.4 कि.मी.'],s:['walked · no route loaded','चले · कोई रास्ता नहीं'],a:0,glyph:null,
+     hap:['none, steady state',null],voice:null},
  regroup:{h:['Rahul · 210 m','राहुल · 210 मी.'],s:['last seen 3 min ago · downhill','3 मिनट पहले देखा · नीचे की ओर'],a:160,glyph:null,
      hap:['2 long (friend lost)',[400,200,400]],voice:['Rahul is 210 metres behind.','राहुल 210 मीटर पीछे हैं।']}
 };
-let st='ok', prev='ok', stationary=false, toast=null, toastTimer=null, pttS='idle', snzEnd=0, snzTimer=null, ang=0, uncTimer=null, uncR=14;
+let st='free', prev='free', stationary=false, toast=null, toastTimer=null, pttS='idle', snzEnd=0, snzTimer=null, ang=0, uncTimer=null, uncR=14;
 
 /* ---------- HUD ---------- */
 function renderStatic(){
-  $('#trip').innerHTML=`<div class="caption">${T('to camp','कैंप तक')}</div><div class="trip ${stationary?'paused':''}">
-   <div><div class="num">6.2<small>${T('km','कि.मी.')}</small></div><div class="caption">${T('distance','दूरी')}</div></div>
-   <div><div class="num">320<small>${T('m','मी.')}</small></div><div class="caption">${T('climb','चढ़ाई')}</div></div>
-   <div><div class="num">2:10<small>${T('h','घं.')}</small></div><div class="caption">${T('time','समय')}</div></div></div>`;
+  const free=st==='free';
+  $('#trip').innerHTML=`<div class="caption">${free?'so far':T('to camp','कैंप तक')}</div><div class="trip ${stationary?'paused':''}">
+   <div><div class="num">${free?'2.4':'6.2'}<small>${T('km','कि.मी.')}</small></div><div class="caption">${T('distance','दूरी')}</div></div>
+   <div><div class="num">${free?'180':'320'}<small>${T('m','मी.')}</small></div><div class="caption">${T('climb','चढ़ाई')}</div></div>
+   <div><div class="num">${free?'1:05':'2:10'}<small>${T('h','घं.')}</small></div><div class="caption">${T('time','समय')}</div></div></div>`;
   const p=$('#paused'); p.hidden=!stationary; p.textContent=T('Paused · tracking resumes when you move','रुका हुआ · चलने पर ट्रैकिंग फिर शुरू होगी');
   $('#sosw').innerHTML=P.holdRound('<span style="color:var(--sos)">SOS</span><small>hold 3 s</small>',3,'var(--sos)',80,'SOS, hold 3 seconds');
   P.wireHold($('#sosw .hold'),()=>{ $('#hlog').innerHTML='haptic: <b>one strong pulse · SOS started</b>'; P.go('sos-active.html?from=trek') });
@@ -152,6 +155,7 @@ function at(L){ const p=rp.getPointAtLength(L), q=rp.getPointAtLength(L+1.5); re
 function bearingDeg(rad){ return rad*180/Math.PI+90 }   // 0 = up
 function sample(p,from,to,step){ let d=''; for(let l=from;l<=to;l+=step){const q=p.getPointAtLength(l);d+=(d?'L':'M')+q.x.toFixed(1)+' '+q.y.toFixed(1)} return d }
 function drawMap(){
+  $('#route').style.display=st==='free'?'none':'';
   const len=rp.getTotalLength(), Lj=len*.52, J=at(Lj);
   const ba=J.a+.9, dir={x:Math.cos(ba),y:Math.sin(ba)}, perp={x:-dir.y,y:dir.x};
   const bd=`M${J.x} ${J.y} C${J.x+dir.x*50} ${J.y+dir.y*50} ${J.x+dir.x*110+perp.x*14} ${J.y+dir.y*110+perp.y*14} ${J.x+dir.x*190} ${J.y+dir.y*190}`;
@@ -165,12 +169,12 @@ function drawMap(){
     return `<g><circle cx="${off.x}" cy="${off.y}" r="13" fill="#000" stroke="${out?'var(--text3)':'var(--ok)'}" stroke-width="2.5" ${out?'stroke-dasharray="3 3"':''}/><text x="${off.x}" y="${off.y+4}" text-anchor="middle" font-size="11" fill="${out?'var(--text2)':'var(--text)'}" font-family="Barlow,sans-serif" font-weight="500">${t}</text></g>` };
   let g='';
   // unchosen / taken branch
-  g+=`<path d="${bd}" fill="none" stroke="${st==='off'?'var(--warn)':'var(--text3)'}" stroke-width="${st==='off'?3:3.5}" stroke-linecap="round" ${st==='off'?'stroke-dasharray="1 7"':''}/>`;
+  if(st!=='free') g+=`<path d="${bd}" fill="none" stroke="${st==='off'?'var(--warn)':'var(--text3)'}" stroke-width="${st==='off'?3:3.5}" stroke-linecap="round" ${st==='off'?'stroke-dasharray="1 7"':''}/>`;
   // breadcrumb (dotted, faint)
   let crumb=st==='off'?sample(rp,0,Lj,5)+' '+sample(bp,0,46,5).replace('M','L'):sample(rp,0,youL,5);
   g+=`<path d="${crumb}" fill="none" stroke="var(--text2)" stroke-opacity=".6" stroke-width="3" stroke-dasharray="1 6" stroke-linecap="round"/>`;
   // junction node
-  g+= st==='junction'
+  if(st!=='free') g+= st==='junction'
     ? `<circle cx="${J.x}" cy="${J.y}" r="16" fill="none" stroke="var(--nav)" stroke-width="1.5"/><circle cx="${J.x}" cy="${J.y}" r="8" fill="#000" stroke="var(--nav)" stroke-width="4"/>`
     : `<circle cx="${J.x}" cy="${J.y}" r="6" fill="#000" stroke="var(--text2)" stroke-width="2"/>`;
   // friends
@@ -204,7 +208,7 @@ function setState(s){ prev=st; st=s; renderHud(false); const d=S[s];
   if(d.hap[0]&&s!=='ok')hap(d.hap[0],d.hap[1]); else if(s==='ok'&&prev!=='off'&&prev!=='wrong')hap(d.hap[0]);
   if(d.voice)say(d.voice[0],d.voice[1]); else $('#vlog').innerHTML='voice: <b>none</b>';
   startUnc(); }
-mkCtl($('#c-state'),[['ok','On route'],['junction','Junction'],['off','Off route'],['wrong','Wrong way'],['gps','GPS lost'],['regroup','Regroup']],setState,true);
+mkCtl($('#c-state'),[['free','Free trek (no route)'],['ok','On route'],['junction','Junction'],['off','Off route'],['wrong','Wrong way'],['gps','GPS lost'],['regroup','Regroup']],setState,true);
 mkCtl($('#c-over'),[['_st','Stationary on/off'],['_to','Quick message toast']],(k)=>{
   if(k==='_st'){stationary=!stationary;renderStatic();renderHud(true);return}
   clearTimeout(toastTimer); toast={from:'Rahul',en:'Take left fork',hi:'बाएँ वाला रास्ता लें'}; renderHud(true);

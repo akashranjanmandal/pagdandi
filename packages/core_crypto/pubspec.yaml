@@ -1,0 +1,13 @@
+name: core_crypto
+description: Group key, pairing QR payload and AES-GCM message encryption. Pure Dart.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: ^3.13.2
+dependencies:
+  core_common:
+  cryptography: ^2.7.0
+  meta: ^1.15.0
+dev_dependencies:
+  test: ^1.25.6

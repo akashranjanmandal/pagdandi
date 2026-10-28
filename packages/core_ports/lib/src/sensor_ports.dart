@@ -40,6 +40,8 @@ abstract interface class MotionSensor {
 }
 
 /// Accelerometer (fall detection).
+// A port is a deliberate one-method interface: fakes and adapters implement it.
+// ignore: one_member_abstracts
 abstract interface class Accelerometer {
   /// Samples at about [period] spacing while listened to.
   Stream<AccelSample> samples(Duration period);

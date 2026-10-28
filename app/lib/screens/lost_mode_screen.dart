@@ -56,6 +56,10 @@ class LostView {
     this.groupReached = false,
     this.torch = false,
     this.siren = false,
+    this.beacon = false,
+    this.live = false,
+    this.accuracy = 'GPS ±12 m',
+    this.battery = 64,
   });
 
   /// Flow position.
@@ -72,6 +76,19 @@ class LostView {
 
   /// Siren on.
   final bool siren;
+
+  /// A real beacon is broadcasting (never claimed otherwise).
+  final bool beacon;
+
+  /// The real app: no group data exists yet, so no distances, group claims
+  /// or backtrack are shown.
+  final bool live;
+
+  /// "GPS ±12 m" or "GPS ±—".
+  final String accuracy;
+
+  /// Battery percent.
+  final int battery;
 }
 
 /// For the separated person: stay put, see where the group probably is, see
@@ -121,29 +138,31 @@ class LostModeScreen extends StatelessWidget {
     final found = view.stage == LostStage.found;
 
     final rows = [
-      const ChecklistRow(
-        icon: AppIcon.radar,
-        label: 'Beacon broadcasting',
-        status: 'on',
-        state: RowState.live,
-      ),
+      if (view.beacon)
+        const ChecklistRow(
+          icon: AppIcon.radar,
+          label: 'Beacon broadcasting',
+          status: 'on',
+          state: RowState.live,
+        ),
       const ChecklistRow(
         icon: AppIcon.octagon,
         label: 'SOS SMS armed, sends at first signal',
         status: 'armed',
         state: RowState.wait,
       ),
-      ChecklistRow(
-        icon: AppIcon.people,
-        label: view.groupReached ? 'Group alerted' : 'Group will be alerted',
-        status: view.groupReached ? '3 received' : 'when in range',
-        state: view.groupReached ? RowState.done : RowState.wait,
-      ),
+      if (!view.live)
+        ChecklistRow(
+          icon: AppIcon.people,
+          label: view.groupReached ? 'Group alerted' : 'Group will be alerted',
+          status: view.groupReached ? '3 received' : 'when in range',
+          state: view.groupReached ? RowState.done : RowState.wait,
+        ),
     ];
 
     final strip = GlanceStrip(
-      accuracy: found ? 'GPS ±6 m' : 'GPS ±12 m',
-      battery: 64,
+      accuracy: view.live ? view.accuracy : (found ? 'GPS ±6 m' : 'GPS ±12 m'),
+      battery: view.live ? view.battery : 64,
       tint: found ? p.surface : p.tintSignal,
       tag: found
           ? StatusTag(icon: AppIcon.ok, label: 'Found', color: p.ok)
@@ -209,17 +228,21 @@ class LostModeScreen extends StatelessWidget {
         body = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const BigInstruction(
+            BigInstruction(
               title: 'Stay where you are',
-              sub: 'Your group is coming to your last position',
+              sub: view.live
+                  ? 'Keep still. Your SOS message is ready to send.'
+                  : 'Your group is coming to your last position',
             ),
-            distance(
-              '320',
-              'group’s last position',
-              'seen 4 min ago · downhill',
-              20,
-            ),
-            const SizedBox(height: 14),
+            if (!view.live) ...[
+              distance(
+                '320',
+                'group’s last position',
+                'seen 4 min ago · downhill',
+                20,
+              ),
+              const SizedBox(height: 14),
+            ],
             StatusChecklist(rows: rows),
           ],
         );
@@ -246,11 +269,12 @@ class LostModeScreen extends StatelessWidget {
                 ),
               ],
             ),
-            KeyButton(
-              icon: AppIcon.walk,
-              label: 'I need to move',
-              onPressed: onMove ?? noop,
-            ),
+            if (!view.live)
+              KeyButton(
+                icon: AppIcon.walk,
+                label: 'I need to move',
+                onPressed: onMove ?? noop,
+              ),
             foundBtn,
           ],
         );

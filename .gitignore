@@ -16,3 +16,6 @@ local.properties
 .DS_Store
 .idea/
 .vscode/
+
+# Golden test failure output
+**/test/goldens/failures/

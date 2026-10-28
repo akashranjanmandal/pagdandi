@@ -1,0 +1,11 @@
+name: engine_health
+description: Self-health watchdog (GPS age, permissions, battery exemption, storage, battery). Pure Dart.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: ^3.13.2
+dependencies:
+  meta: ^1.15.0
+dev_dependencies:
+  test: ^1.25.6

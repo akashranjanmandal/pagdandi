@@ -91,6 +91,34 @@ void main() {
     expect(gps.latest, isNull);
   });
 
+  test('FakeSmsGateway can be told to fail sends', () async {
+    final g = FakeSmsGateway()..sendError = StateError('no radio');
+    await expectLater(
+      g.send(const SmsMessage(id: '1', to: '+91', body: 'x')),
+      throwsStateError,
+    );
+    expect(g.sent, isEmpty);
+    g.sendError = null;
+    await g.send(const SmsMessage(id: '2', to: '+91', body: 'x'));
+    expect(g.sent.single.id, '2');
+  });
+
+  test('FakeHeartbeatSink records beats and can fail', () async {
+    final h = FakeHeartbeatSink();
+    await h.beat(DateTime.utc(2026));
+    expect(h.beats, [DateTime.utc(2026)]);
+    h.error = StateError('x');
+    await expectLater(h.beat(DateTime.utc(2027)), throwsStateError);
+  });
+
+  test('FakeTrekService starts and stops', () async {
+    final s = FakeTrekService();
+    await s.start();
+    expect(s.running, isTrue);
+    await s.stop();
+    expect(s.running, isFalse);
+  });
+
   test('FakeAlarmScheduler lists pending alarms', () async {
     final a = FakeAlarmScheduler(FakeClock(DateTime.utc(2026)));
     await a.schedule(7, DateTime.utc(2027));

@@ -5,6 +5,7 @@ void main() {
   test('only delivered and failed are final', () {
     expect(SmsStatus.delivered.isFinal, isTrue);
     expect(SmsStatus.failed.isFinal, isTrue);
+    expect(SmsStatus.cancelled.isFinal, isTrue);
     expect(SmsStatus.queued.isFinal, isFalse);
     expect(SmsStatus.sending.isFinal, isFalse);
     expect(SmsStatus.sent.isFinal, isFalse);

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagdandi emergency card</title>
+<style>{{CSS}}</style>
+</head>
+<body>
+{{SPRITE}}
+{{BAR}}
+<div class="layout">
+<div class="phone" id="phone" aria-label="Emergency card"></div>
+<aside class="side">
+  <div class="grp"><h2>State</h2><div class="ctl" id="c-state"></div></div>
+  <div class="grp"><h2>Notes</h2><p class="label">Reasons, states, copy: <b>emergency-card.md</b>. Readable from the lock screen without unlocking.</p></div>
+</aside>
+</div>
+<script>{{BASE_JS}}</script>
+<script>
+(function(){
+'use strict';
+const {$,ic,mkCtl}=P;
+let st='view';
+function render(){
+  let h=`<div class="topbar" style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:var(--line) solid var(--hair);background:var(--surface);min-height:56px"><span class="title">Emergency card</span><span class="caption">Akash Mandal</span></div>`;
+  if(st==='view'||st==='lock'){
+    h+=`<div class="scroll" style="padding:18px"><div class="caption">Blood group</div><div class="display" style="font-size:72px;line-height:1">B+</div>
+    <div class="kv" style="margin-top:16px"><span>Allergies</span><span>Penicillin</span></div><div class="kv"><span>Medicines</span><span>None</span></div>
+    <div class="caption" style="margin-top:18px">Call</div>
+    <div class="contact" style="display:flex;align-items:center;gap:12px;min-height:72px;border-bottom:var(--line) solid var(--hair)"><div class="av">M</div><div style="flex:1"><div style="font-weight:500">Meera</div><div class="caption">+91 98xxx xx210</div></div><button class="btn" style="width:auto;min-height:56px">${ic('call')}Call</button></div>
+    <div class="contact" style="display:flex;align-items:center;gap:12px;min-height:72px"><div class="av">R</div><div style="flex:1"><div style="font-weight:500">Rahul</div><div class="caption">+91 97xxx xx455</div></div><button class="btn" style="width:auto;min-height:56px">${ic('call')}Call</button></div></div>
+    <div class="zone-thumb">${st==='lock'?`<div class="caption">Shown on the lock screen. Unlock to edit.</div>`:`<button class="btn" id="edit">${ic('card')}Edit card</button><a class="btn" href="basecamp.html" style="text-decoration:none">${ic('back')}Back</a>`}</div>`;
+  } else {
+    h+=`<div class="scroll" style="padding:18px"><div class="caption">Blood group</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:8px 0 14px">${['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(b=>`<button class="opt" style="min-height:56px;justify-content:center;font-size:18px" aria-pressed="${b==='B+'}">${b}</button>`).join('')}</div><div class="caption">Allergies</div><div class="kv"><span>Penicillin</span></div><div class="caption" style="margin-top:12px">Medicines</div><div class="kv"><span style="color:var(--text2)">None</span></div></div>
+    <div class="zone-thumb"><button class="btn primary" id="save">${ic('check')}Save</button><button class="btn" id="cancel">Cancel</button></div>`;
+  }
+  $('#phone').innerHTML=h; const e=$('#edit'); if(e)P.press(e,()=>{st='edit';render();set()}); const sv=$('#save'),cn=$('#cancel'); if(sv)P.press(sv,()=>{st='view';render();set()}); if(cn)P.press(cn,()=>{st='view';render();set()}); P.apply();
+}
+function set(){ document.querySelectorAll('#c-state button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===st)) }
+mkCtl($('#c-state'),[['view','View'],['edit','Edit'],['lock','On lock screen']],s=>{st=s;render()},true);
+P.listeners.push(render);
+render();
+})();
+</script>
+</body>
+</html>

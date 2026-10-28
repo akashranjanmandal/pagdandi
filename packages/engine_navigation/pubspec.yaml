@@ -1,0 +1,13 @@
+name: engine_navigation
+description: Route model, GPX import, route matching and off-route / wrong-way / GPS-lost guidance. Pure Dart.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: ^3.13.2
+dependencies:
+  core_geo:
+  meta: ^1.15.0
+  xml: ^6.5.0
+dev_dependencies:
+  test: ^1.25.6

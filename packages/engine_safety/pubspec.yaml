@@ -1,0 +1,17 @@
+name: engine_safety
+description: Safety kernel (SOS outbox, later fall detection, check-in, lost mode). Depends on core packages only so no other failure can stop it. Pure Dart.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: ^3.13.2
+dependencies:
+  core_common:
+  core_model:
+  core_ports:
+  meta: ^1.15.0
+dev_dependencies:
+  core_db:
+  drift: ^2.35.0
+  test: ^1.25.6
+  testing:

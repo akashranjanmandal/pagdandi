@@ -43,6 +43,26 @@ void main() {
     expect(s.branchesHit, 1);
   });
 
+  test('generated files (*.g.dart) are ignored', () {
+    final s = parseLcov(
+      'SF:lib/a.g.dart\nDA:1,0\nDA:2,0\nBRDA:1,0,0,0\nend_of_record\n'
+      'SF:lib/b.dart\nDA:1,1\nend_of_record\n',
+    );
+    expect(s.linesFound, 1);
+    expect(s.linePercent, 100);
+    expect(s.branchesFound, 0);
+  });
+
+  test('named declaration files can be excluded explicitly', () {
+    const text =
+        'SF:lib/src/tables.dart\nDA:1,0\nend_of_record\nSF:lib/b.dart\nDA:1,1\nend_of_record\n';
+    expect(parseLcov(text).linePercent, 50);
+    expect(
+      parseLcov(text, exclude: const ['lib/src/tables.dart']).linePercent,
+      100,
+    );
+  });
+
   test('rules: line threshold and optional branch threshold', () {
     final s = parseLcov(_lcov);
     expect(const CoverageRule(minLine: 80).check(s), isEmpty);

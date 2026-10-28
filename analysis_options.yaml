@@ -12,6 +12,5 @@ linter:
   rules:
     public_member_api_docs: true
     # Ports are deliberately small interfaces, some with a single method.
-    one_member_abstracts: false
     # Plain statements read better than long cascades in tests.
     cascade_invocations: false

@@ -6,24 +6,37 @@ resolution: workspace
 environment:
   sdk: ^3.13.2
 dependencies:
+  clock: ^1.1.0
   core_common:
+  core_db:
+  core_geo:
   core_model:
+  core_ports:
+  device_info_plus: ^13.0.0
+  drift: ^2.35.0
+  engine_health:
+  engine_navigation:
+  engine_safety:
+  engine_tracking:
+  engine_trekstate:
   flutter:
     sdk: flutter
-  flutter_map: ^7.0.2
   flutter_riverpod: ^3.4.3
-  latlong2: ^0.9.1
   meta: ^1.19.0
   native_bridge:
   path_drawing: ^1.0.1
-  vector_map_tiles: ^8.0.0
-  vector_map_tiles_pmtiles: ^1.5.0
+  permission_handler: ^12.0.0
+  trek_core:
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   testing:
 flutter:
   uses-material-design: false
+  assets:
+    - assets/routes/
   fonts:
     - family: Barlow
       fonts:

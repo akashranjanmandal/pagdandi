@@ -6,6 +6,7 @@ import 'package:pagdandi_app/widgets/ptt_key.dart';
 import 'package:pagdandi_app/widgets/ui_scope.dart';
 
 import 'golden_harness.dart';
+import 'live_view.dart';
 
 void main() {
   group('Active Trek states', () {
@@ -14,9 +15,7 @@ void main() {
         await pumpPhone(
           tester,
           ActiveTrekScreen(
-            view: ActiveTrekView.sample(
-              nav,
-            ),
+            view: nav == NavState.free ? live() : ActiveTrekView.sample(nav),
           ),
         );
         await expectLater(

@@ -36,3 +36,7 @@ Choose **A**. It already renders offline, the file is small, one `pmtiles` comma
 3. `cd app && flutter run --profile -t lib/spike_main.dart` (profile mode, not debug).
 4. Pan and pinch for 30 seconds, then read the line at the top-left (tap it to reset).
 5. Pass criterion I suggest: jank under 5% and p95 under 16 ms at the zoom levels we use (12 to 15).
+
+
+## Update 2026-10-28
+The spike code (`app/lib/spike`, `spike_main.dart`) and the four map packages it pulled in (`flutter_map`, `latlong2`, `vector_map_tiles`, `vector_map_tiles_pmtiles`) were removed from the app so the APK carries nothing it does not use. The code is in git history (commit e602114). The decision itself stands: when offline tiles are built (M4) the packages go back in. Until then the trek screen draws the route itself (`RoutePanel`), north up, with an elevation profile, credited to OpenStreetMap contributors.

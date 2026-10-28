@@ -5,10 +5,19 @@ environment:
   sdk: ^3.13.2
 workspace:
   - packages/core_common
+  - packages/core_crypto
+  - packages/core_db
+  - packages/core_geo
   - packages/core_model
   - packages/core_ports
+  - packages/engine_health
+  - packages/engine_navigation
+  - packages/engine_safety
+  - packages/engine_tracking
+  - packages/engine_trekstate
   - packages/native_bridge
   - packages/testing
+  - packages/trek_core
   - app
 dev_dependencies:
   coverage: ^1.15.0

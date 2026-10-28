@@ -24,7 +24,7 @@ sprite = sprite.replace('</defs>', extra_icons + '</defs>')
 sprite = re.sub(r'(\d)\.(\d)00\b', r'\1.\2', sprite)
 extra_css = (here / 'phone.css').read_text()
 base_js = (here / 'base.js').read_text()
-links = [('active-trek', 'Active Trek'), ('lost-mode', 'Lost mode'), ('friend-sos', 'Friend SOS'),
+links = [('setup', 'Setup'), ('basecamp', 'Basecamp'), ('emergency-card', 'Emergency card'), ('lock-notification', 'Lock screen'), ('active-trek', 'Active Trek'), ('lost-mode', 'Lost mode'), ('friend-sos', 'Friend SOS'),
          ('fall-countdown', 'Fall countdown'), ('sos-active', 'SOS active'), ('components', 'Components')]
 toggles = [('sun', 'Sunlight'), ('glove', 'Glove'), ('left', 'Left-handed'),
            ('reduce', 'Reduce motion'), ('ts', 'Text 1.5×')]

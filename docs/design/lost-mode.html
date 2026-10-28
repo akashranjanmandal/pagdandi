@@ -435,7 +435,7 @@ body.sun .phone .zone-glance{background:#000}
   <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></symbol>
 </defs>
 </svg>
-<div class="bar" role="toolbar" aria-label="Preview options"><nav class="navlinks"><a href="active-trek.html">Active Trek</a><a href="lost-mode.html" aria-current="page">Lost mode</a><a href="friend-sos.html">Friend SOS</a><a href="fall-countdown.html">Fall countdown</a><a href="sos-active.html">SOS active</a><a href="components.html">Components</a></nav><span style="flex:1"></span><button class="tg" data-p="sun" aria-pressed="false">Sunlight</button><button class="tg" data-p="glove" aria-pressed="false">Glove</button><button class="tg" data-p="left" aria-pressed="false">Left-handed</button><button class="tg" data-p="reduce" aria-pressed="false">Reduce motion</button><button class="tg" data-p="ts" aria-pressed="false">Text 1.5×</button></div>
+<div class="bar" role="toolbar" aria-label="Preview options"><nav class="navlinks"><a href="setup.html">Setup</a><a href="basecamp.html">Basecamp</a><a href="emergency-card.html">Emergency card</a><a href="lock-notification.html">Lock screen</a><a href="active-trek.html">Active Trek</a><a href="lost-mode.html" aria-current="page">Lost mode</a><a href="friend-sos.html">Friend SOS</a><a href="fall-countdown.html">Fall countdown</a><a href="sos-active.html">SOS active</a><a href="components.html">Components</a></nav><span style="flex:1"></span><button class="tg" data-p="sun" aria-pressed="false">Sunlight</button><button class="tg" data-p="glove" aria-pressed="false">Glove</button><button class="tg" data-p="left" aria-pressed="false">Left-handed</button><button class="tg" data-p="reduce" aria-pressed="false">Reduce motion</button><button class="tg" data-p="ts" aria-pressed="false">Text 1.5×</button></div>
 <div class="layout">
 <div class="phone" id="phone" aria-label="Lost mode screen"></div>
 <aside class="side">
@@ -493,7 +493,7 @@ P.shortest=(cur,target)=>cur+(((target-cur)%360+540)%360-180);
 const TAGS=P.TAGS={ok:['ok','On route','रास्ते पर'],junction:['fork','Junction ahead','आगे दोराहा'],off:['warn','Off route','रास्ते से हटे'],
   wrong:['uturn','Wrong way','गलत दिशा'],gps:['gps','GPS lost','GPS सिग्नल नहीं'],regroup:['radar','Regrouping','एकजुट हो रहे हैं'],
   sos:['sos','SOS','SOS'],lost:['stay','Lost mode','खोए हुए'],flost:['radar','Friend out of range','साथी सीमा से बाहर'],
-  fsos:['sos','Friend SOS','साथी का SOS'],fall:['warn','Fall detected','गिरना पता चला']};
+  fsos:['sos','Friend SOS','साथी का SOS'],fall:['warn','Fall detected','गिरना पता चला'],free:['pin','Tracking','ट्रैकिंग']};
 P.tag=k=>`<span class="tag" data-s="${k}">${P.ic(TAGS[k][0])}${P.T(TAGS[k][1],TAGS[k][2])}</span>`;
 P.mkCtl=function(el,items,fn,first){
   el.innerHTML=items.map((it,i)=>`<button data-s="${it[0]}" aria-pressed="${!!first&&i===0}">${it[1]}</button>`).join('');

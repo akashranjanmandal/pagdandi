@@ -1,0 +1,17 @@
+name: core_db
+description: Drift (SQLite) schema, DAOs and migrations. Pure Dart; the app supplies the platform SQLite.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: ^3.13.2
+dependencies:
+  core_model:
+  core_ports:
+  drift: ^2.35.0
+  meta: ^1.15.0
+dev_dependencies:
+  build_runner: ^2.5.0
+  drift_dev: ^2.35.0
+  sqlite3: ^3.0.0
+  test: ^1.25.6

@@ -1,0 +1,5 @@
+# Copy to key.properties (git-ignored) and fill in. Never commit key.properties.
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=pagdandi
+storeFile=/Users/koustavdas/pagdandi-release.jks

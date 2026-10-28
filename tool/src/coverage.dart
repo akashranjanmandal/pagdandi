@@ -31,14 +31,22 @@ class CoverageSummary {
       branchesFound == 0 ? 100 : branchesHit * 100 / branchesFound;
 }
 
-/// Parses the text of an `lcov.info` file.
-CoverageSummary parseLcov(String lcov) {
+/// Parses the text of an `lcov.info` file. Generated files and any file whose
+/// path ends with one of [exclude] (pure declarations) are ignored.
+CoverageSummary parseLcov(String lcov, {List<String> exclude = const []}) {
   var linesFound = 0;
   var linesHit = 0;
   var branchesFound = 0;
   var branchesHit = 0;
+  var skip = false;
   for (final line in lcov.split('\n')) {
-    if (line.startsWith('DA:')) {
+    if (line.startsWith('SF:')) {
+      // Generated code (Drift, Pigeon) is not ours to cover.
+      final file = line.trim();
+      skip = file.endsWith('.g.dart') || exclude.any(file.endsWith);
+    } else if (skip) {
+      continue;
+    } else if (line.startsWith('DA:')) {
       linesFound++;
       final hits = int.tryParse(line.split(',').last.trim()) ?? 0;
       if (hits > 0) linesHit++;
@@ -59,7 +67,14 @@ CoverageSummary parseLcov(String lcov) {
 /// Minimum coverage a package must reach.
 class CoverageRule {
   /// Creates a rule. [minBranch] is only checked when given.
-  const CoverageRule({required this.minLine, this.minBranch});
+  const CoverageRule({
+    required this.minLine,
+    this.minBranch,
+    this.exclude = const [],
+  });
+
+  /// Files left out of the measurement (declarations only), by path suffix.
+  final List<String> exclude;
 
   /// Minimum line coverage in percent.
   final double minLine;

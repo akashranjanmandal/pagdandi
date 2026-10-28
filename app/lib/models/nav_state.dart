@@ -18,7 +18,10 @@ enum NavState {
   gpsLost('GPS lost', AppIcon.gps),
 
   /// Regrouping with a friend who fell behind.
-  regroup('Regrouping', AppIcon.radar);
+  regroup('Regrouping', AppIcon.radar),
+
+  /// Tracking a trek with no planned route loaded.
+  free('Tracking', AppIcon.pin);
 
   const NavState(this.tagLabel, this.icon);
 

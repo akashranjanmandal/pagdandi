@@ -19,9 +19,29 @@ abstract interface class TorchOutput {
 }
 
 /// Loud siren on the alarm stream (works in silent mode).
+// A port is a deliberate one-method interface: fakes and adapters implement it.
+// ignore: one_member_abstracts
 abstract interface class SirenOutput {
   /// Starts or stops the siren.
   Future<void> setOn({required bool on});
+}
+
+/// Speaks short alerts (English), after a soft chime.
+abstract interface class VoiceOutput {
+  /// Says [text]. An [urgent] line interrupts whatever is being said.
+  Future<void> speak(String text, {bool urgent = false});
+
+  /// Stops speaking.
+  Future<void> stop();
+}
+
+/// Opens the phone dialer with a number filled in. It never places the call:
+/// the person presses the call key.
+// A port is a deliberate one-method interface: fakes and adapters implement it.
+// ignore: one_member_abstracts
+abstract interface class Dialer {
+  /// Opens the dialer for [number].
+  Future<void> open(String number);
 }
 
 /// Exact alarms (check-in timer, fall countdown).
